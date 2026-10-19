@@ -1,0 +1,16 @@
+# secrets and local notes
+.env
+.env.*
+LOCAL-NOTES.md
+
+# development documents and tools, kept local
+CLAUDE.md
+ANALYSIS.md
+requirements.md
+.claude/
+/spike/
+/tgtui-handoff/
+
+# build output
+/tgtui
+/dist/

@@ -1,0 +1,92 @@
+# tgtui theme · catppuccin-mocha
+#
+# Every theme file has the same sections and keys; the UI reads roles, never colours.
+#   colour value   { hex = "#rrggbb", x256 = N }   truecolor + nearest xterm-256 index (16–255)
+#   style flags    bold, italic, underline, faint, reverse  (optional, default false)
+#   reference      "@section.key"  reuses another role's value and flags
+# 256-colour terminals use x256; nothing in these themes touches ANSI 0–15.
+# Every text role is ≥ 4.5:1 on [base].background in truecolor and in 256 colours.
+
+[meta]
+name = "catppuccin-mocha"
+family = "catppuccin"
+variant = "dark"
+pair = "catppuccin-latte"     # the light variant of the same family
+background = "paint"          # "paint": the app fills its own background · "terminal": keep the terminal's
+
+[base]
+background = { hex = "#1e1e2e", x256 = 234 }   # Base
+text       = { hex = "#cdd6f4", x256 = 189 }   # Text
+title      = { hex = "#cdd6f4", x256 = 189, bold = true }
+secondary  = { hex = "#9399b2", x256 = 103 }   # Overlay2 (Overlay1 is 4.4:1, under AA)
+border     = { hex = "#45475a", x256 = 238 }   # Surface1, unfocused frames and rules
+
+[focus]
+focused_border = { hex = "#b4befe", x256 = 147 }   # Lavender
+accent         = { hex = "#cba6f7", x256 = 183, bold = true }   # Mauve: mode label, current tab, banners
+selection_bg   = { hex = "#313244", x256 = 236 }   # Surface0: open chat, cursor rows, picked item
+selection_fg   = "@base.text"
+cursor         = { reverse = true }                # one reversed cell of the input text
+
+[chat_list]
+title_unread     = "@base.title"
+title_read       = "@base.text"
+preview          = "@base.secondary"
+time             = "@base.secondary"
+pinned           = "@base.secondary"               # ↑
+unread_badge_bg  = { hex = "#89b4fa", x256 = 111 } # Blue
+unread_badge_fg  = { hex = "#11111b", x256 = 233, bold = true }   # Crust
+muted_badge_bg   = { hex = "#45475a", x256 = 238 } # Surface1
+muted_badge_fg   = { hex = "#bac2de", x256 = 146, bold = true }   # Subtext1
+mention_badge_bg = { hex = "#fab387", x256 = 216 } # Peach, also "marked as unread" (•)
+mention_badge_fg = { hex = "#11111b", x256 = 233, bold = true }
+tab_current      = "@focus.accent"
+tab_other        = "@base.secondary"
+
+[messages]
+# Sender names: pick by hashing the sender id; always bold.
+senders = [
+  { hex = "#f38ba8", x256 = 211, bold = true },   # Red
+  { hex = "#a6e3a1", x256 = 150, bold = true },   # Green
+  { hex = "#f9e2af", x256 = 223, bold = true },   # Yellow
+  { hex = "#89dceb", x256 = 116, bold = true },   # Sky
+  { hex = "#cba6f7", x256 = 183, bold = true },   # Mauve
+  { hex = "#fab387", x256 = 216, bold = true },   # Peach
+]
+own           = "@base.text"
+timestamp     = "@base.secondary"
+day_separator = "@base.secondary"
+service_event = "@base.secondary"
+reply_bar     = { hex = "#6c7086", x256 = 60 }    # Overlay0, ┃ before quotes and files
+preview_bar   = { hex = "#89b4fa", x256 = 111 }   # Blue, ┃ before link previews
+sent          = "@base.secondary"                  # ✓
+read          = { hex = "#a6e3a1", x256 = 150 }   # Green ✓✓
+edited        = "@base.secondary"
+sending       = "@base.secondary"                  # …
+failed        = "@states.error"                    # ✕
+
+[format]
+link             = { hex = "#89b4fa", x256 = 111, underline = true }   # Blue
+mention          = { hex = "#74c7ec", x256 = 117, bold = true }        # Sapphire
+hashtag          = "@format.mention"
+code_fg          = { hex = "#fab387", x256 = 216 }                     # Peach
+code_bg          = { hex = "#313244", x256 = 236 }                     # Surface0
+quote_bar        = "@messages.reply_bar"
+quote_text       = { hex = "#cdd6f4", x256 = 189, italic = true }
+spoiler_hidden   = { hex = "#585b70", x256 = 60 }                      # Surface2, drawn as ▒
+spoiler_revealed = { hex = "#cdd6f4", x256 = 189, underline = true }
+
+[composer]
+input               = "@base.text"
+placeholder         = "@base.secondary"
+banner              = "@focus.accent"      # ↳ reply / ✎ editing, in the top border
+attachment          = "@messages.reply_bar"
+suggestion_selected = "@focus.selection_bg"
+
+[states]
+error      = { hex = "#f38ba8", x256 = 211, bold = true }   # Red
+warning    = { hex = "#f9e2af", x256 = 223 }                # Yellow
+success    = { hex = "#a6e3a1", x256 = 150 }                # Green
+info       = "@states.success"
+connection = { hex = "#fab387", x256 = 216 }                # Peach
+update     = { hex = "#94e2d5", x256 = 116 }                # Teal

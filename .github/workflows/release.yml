@@ -1,0 +1,64 @@
+# A tag v* builds the static Linux binaries in Docker (TDLib compiles there, cached per
+# architecture) and publishes them with checksums as a GitHub release.
+# Needs the repository secrets TGTUI_API_ID and TGTUI_API_HASH, embedded in the binaries.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          outputs: type=local,dest=out
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            BUILD_JOBS=4
+          secrets: |
+            api_id=${{ secrets.TGTUI_API_ID }}
+            api_hash=${{ secrets.TGTUI_API_HASH }}
+          cache-from: type=gha,scope=linux-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=linux-${{ matrix.arch }}
+      - name: Check and pack
+        run: |
+          file out/tgtui | grep -q 'statically linked'
+          out/tgtui --version
+          tar -C out -czf tgtui_linux_${{ matrix.arch }}.tar.gz tgtui
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tgtui_linux_${{ matrix.arch }}
+          path: tgtui_linux_${{ matrix.arch }}.tar.gz
+
+  release:
+    needs: linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          sha256sum tgtui_*.tar.gz > checksums.txt
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" \
+            --generate-notes $([[ "$GITHUB_REF_NAME" == *-* ]] && echo --prerelease) tgtui_*.tar.gz checksums.txt

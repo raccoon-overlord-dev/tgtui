@@ -1,0 +1,91 @@
+# tgtui theme · harvest
+#
+# Every theme file has the same sections and keys; the UI reads roles, never colours.
+#   colour value   { hex = "#rrggbb", x256 = N }   truecolor + nearest xterm-256 index (16–255)
+#   style flags    bold, italic, underline, faint, reverse  (optional, default false)
+#   reference      "@section.key"  reuses another role's value and flags
+# 256-colour terminals use x256; nothing in these themes touches ANSI 0–15.
+# Every text role is ≥ 4.5:1 on [base].background in truecolor and in 256 colours.
+
+[meta]
+name = "harvest"
+family = "harvest"
+variant = "dark"
+pair = "harvest-light"
+background = "paint"
+
+[base]
+background = { hex = "#1c1612", x256 = 233 }   # bark
+text       = { hex = "#ecdcc6", x256 = 187 }   # parchment
+title      = { hex = "#f6ead8", x256 = 255, bold = true }   # cream
+secondary  = { hex = "#a8927c", x256 = 138 }   # husk
+border     = { hex = "#4d3d31", x256 = 238 }   # walnut
+
+[focus]
+focused_border = { hex = "#e8833a", x256 = 209 }   # pumpkin
+accent         = { hex = "#e8833a", x256 = 209, bold = true }
+selection_bg   = { hex = "#3b2e25", x256 = 236 }   # roast
+selection_fg   = "@base.text"
+cursor         = { reverse = true }
+
+[chat_list]
+title_unread     = "@base.title"
+title_read       = "@base.text"
+preview          = "@base.secondary"
+time             = "@base.secondary"
+pinned           = "@base.secondary"
+unread_badge_bg  = { hex = "#e8833a", x256 = 209 } # pumpkin
+unread_badge_fg  = { hex = "#1c1612", x256 = 233, bold = true }   # bark
+muted_badge_bg   = { hex = "#3b2e25", x256 = 236 } # roast
+muted_badge_fg   = { hex = "#c9b49c", x256 = 180, bold = true }   # oat
+mention_badge_bg = { hex = "#d9665e", x256 = 167 } # apple
+mention_badge_fg = { hex = "#1c1612", x256 = 233, bold = true }
+tab_current      = "@focus.accent"
+tab_other        = "@base.secondary"
+
+[messages]
+senders = [
+  { hex = "#c97b4a", x256 = 173, bold = true },   # rust
+  { hex = "#a3b56b", x256 = 143, bold = true },   # sage
+  { hex = "#e6b450", x256 = 179, bold = true },   # mustard
+  { hex = "#b98bb0", x256 = 139, bold = true },   # plum
+  { hex = "#d9665e", x256 = 167, bold = true },   # apple
+  { hex = "#7fa37a", x256 = 108, bold = true },   # moss
+]
+own           = "@base.text"
+timestamp     = "@base.secondary"
+day_separator = "@base.secondary"
+service_event = "@base.secondary"
+reply_bar     = { hex = "#6b5847", x256 = 240 }   # chestnut
+preview_bar   = { hex = "#c97b4a", x256 = 173 }   # rust
+sent          = "@base.secondary"
+read          = { hex = "#a3b56b", x256 = 143 }   # sage
+edited        = "@base.secondary"
+sending       = "@base.secondary"
+failed        = "@states.error"
+
+[format]
+link             = { hex = "#e6b450", x256 = 179, underline = true }   # mustard
+mention          = { hex = "#e6b450", x256 = 179, bold = true }
+hashtag          = "@format.mention"
+code_fg          = { hex = "#e6b450", x256 = 179 }
+code_bg          = { hex = "#2a211b", x256 = 235 }                     # hearth
+quote_bar        = "@messages.reply_bar"
+quote_text       = { hex = "#ecdcc6", x256 = 187, italic = true }
+spoiler_hidden   = { hex = "#4d3d31", x256 = 238 }                     # walnut
+spoiler_revealed = { hex = "#ecdcc6", x256 = 187, underline = true }
+
+[composer]
+input               = "@base.text"
+placeholder         = "@base.secondary"
+banner              = "@focus.accent"
+attachment          = "@messages.reply_bar"
+suggestion_selected = "@focus.selection_bg"
+
+[states]
+error      = { hex = "#e06c5c", x256 = 167, bold = true }   # ember
+warning    = { hex = "#e6b450", x256 = 179 }                # mustard
+success    = { hex = "#a3b56b", x256 = 143 }                # sage
+info       = "@states.success"
+connection = { hex = "#d9665e", x256 = 167 }                # apple
+update     = { hex = "#e8833a", x256 = 209 }                # pumpkin

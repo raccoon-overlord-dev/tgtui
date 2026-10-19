@@ -1,0 +1,9 @@
+.env
+.env.*
+.git
+LOCAL-NOTES.md
+spike/
+tgtui-handoff/
+docs/
+tgtui
+dist/

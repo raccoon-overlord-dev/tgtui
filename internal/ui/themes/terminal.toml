@@ -1,0 +1,92 @@
+# tgtui theme · terminal  (built-in default)
+#
+# Same sections and keys as every other theme, but values name the 16 ANSI colours the
+# user configured, so the theme follows their palette in any terminal, dark or light.
+#   colour value   { ansi = "<name>" }   default | black | red | green | yellow | blue |
+#                                        magenta | cyan | white | bright_<name>
+#   style flags    bold, italic, underline, faint, reverse  (optional, default false)
+#   reference      "@section.key"  reuses another role's value and flags
+# SGR codes are in the comments for reference. Contrast depends on the user's palette:
+# faint text on light palettes can fall below AA, since the terminal decides the dimming.
+
+[meta]
+name = "terminal"
+family = "terminal"
+variant = "any"
+background = "terminal"       # never paints a background
+
+[base]
+background = { ansi = "default" }                 # 49
+text       = { ansi = "default" }                 # 39
+title      = { ansi = "default", bold = true }    # 1
+secondary  = { ansi = "default", faint = true }   # 2 (not bright_black: some palettes use it as a background)
+border     = { ansi = "default", faint = true }   # 2
+
+[focus]
+focused_border = { ansi = "blue" }                # 34
+accent         = { ansi = "blue", bold = true }   # 1;34
+selection_bg   = { ansi = "default", reverse = true }   # 7: the selection is reverse video
+selection_fg   = { ansi = "default", reverse = true }
+cursor         = { reverse = true }               # 7
+
+[chat_list]
+title_unread     = "@base.title"
+title_read       = "@base.text"
+preview          = "@base.secondary"
+time             = "@base.secondary"
+pinned           = "@base.secondary"
+unread_badge_bg  = { ansi = "blue", reverse = true, bold = true }      # 1;7;34
+unread_badge_fg  = "@chat_list.unread_badge_bg"
+muted_badge_bg   = { ansi = "default" }                                # no fill
+muted_badge_fg   = { ansi = "default", faint = true }                  # 2
+mention_badge_bg = { ansi = "magenta", reverse = true, bold = true }   # 1;7;35 (reverse yellow fails on light palettes)
+mention_badge_fg = "@chat_list.mention_badge_bg"
+tab_current      = "@focus.accent"
+tab_other        = "@base.secondary"
+
+[messages]
+senders = [
+  { ansi = "red",     bold = true },   # 1;31
+  { ansi = "green",   bold = true },   # 1;32
+  { ansi = "yellow",  bold = true },   # 1;33
+  { ansi = "blue",    bold = true },   # 1;34
+  { ansi = "magenta", bold = true },   # 1;35
+  { ansi = "cyan",    bold = true },   # 1;36
+]
+own           = "@base.text"
+timestamp     = "@base.secondary"
+day_separator = "@base.secondary"
+service_event = "@base.secondary"
+reply_bar     = { ansi = "default", faint = true }   # 2
+preview_bar   = { ansi = "blue" }                    # 34
+sent          = "@base.secondary"
+read          = { ansi = "green" }                   # 32
+edited        = "@base.secondary"
+sending       = "@base.secondary"
+failed        = "@states.error"
+
+[format]
+link             = { ansi = "blue", underline = true }     # 4;34
+mention          = { ansi = "magenta", bold = true }       # 1;35
+hashtag          = "@format.mention"
+code_fg          = { ansi = "cyan" }                       # 36
+code_bg          = { ansi = "default" }                    # no fill: a background can't be guaranteed
+quote_bar        = "@messages.reply_bar"
+quote_text       = { ansi = "default", italic = true }     # 3
+spoiler_hidden   = { ansi = "default", faint = true }      # 2, drawn as ▒
+spoiler_revealed = { ansi = "default", underline = true }  # 4
+
+[composer]
+input               = "@base.text"
+placeholder         = "@base.secondary"
+banner              = "@focus.accent"
+attachment          = "@messages.reply_bar"
+suggestion_selected = "@focus.selection_bg"
+
+[states]
+error      = { ansi = "red", bold = true }   # 1;31
+warning    = { ansi = "yellow" }             # 33
+success    = { ansi = "green" }              # 32
+info       = "@states.success"
+connection = { ansi = "yellow" }             # 33
+update     = { ansi = "cyan" }               # 36

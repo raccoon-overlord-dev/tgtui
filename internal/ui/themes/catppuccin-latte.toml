@@ -1,0 +1,93 @@
+# tgtui theme · catppuccin-latte
+#
+# Every theme file has the same sections and keys; the UI reads roles, never colours.
+#   colour value   { hex = "#rrggbb", x256 = N }   truecolor + nearest xterm-256 index (16–255)
+#   style flags    bold, italic, underline, faint, reverse  (optional, default false)
+#   reference      "@section.key"  reuses another role's value and flags
+# 256-colour terminals use x256; nothing in these themes touches ANSI 0–15.
+# Every text role is ≥ 4.5:1 on [base].background in truecolor and in 256 colours.
+# Latte's accent colours are made for large UI shapes; as terminal text most of them
+# fail AA. Values marked "darkened" keep the Latte hue and are darkened just enough.
+
+[meta]
+name = "catppuccin-latte"
+family = "catppuccin"
+variant = "light"
+pair = "catppuccin-mocha"
+background = "paint"
+
+[base]
+background = { hex = "#eff1f5", x256 = 255 }   # Base
+text       = { hex = "#4c4f69", x256 = 60 }    # Text
+title      = { hex = "#4c4f69", x256 = 60, bold = true }
+secondary  = { hex = "#66697d", x256 = 242 }   # Subtext0, darkened
+border     = { hex = "#bcc0cc", x256 = 250 }   # Surface1
+
+[focus]
+focused_border = { hex = "#6c7fee", x256 = 69 }    # Lavender, darkened to 3:1
+accent         = { hex = "#8839ef", x256 = 92, bold = true }   # Mauve
+selection_bg   = { hex = "#ccd0da", x256 = 252 }   # Surface0
+selection_fg   = { hex = "#4c4f69", x256 = 239 }   # Text (239 keeps AA on 252)
+cursor         = { reverse = true }
+
+[chat_list]
+title_unread     = "@base.title"
+title_read       = "@base.text"
+preview          = "@base.secondary"
+time             = "@base.secondary"
+pinned           = "@base.secondary"
+unread_badge_bg  = { hex = "#1c60e7", x256 = 26 }  # Blue, darkened
+unread_badge_fg  = { hex = "#eff1f5", x256 = 255, bold = true }   # Base
+muted_badge_bg   = { hex = "#ccd0da", x256 = 252 } # Surface0
+muted_badge_fg   = { hex = "#53566d", x256 = 240, bold = true }   # Subtext1, darkened
+mention_badge_bg = { hex = "#fe640b", x256 = 202 } # Peach
+mention_badge_fg = { hex = "#2a2c39", x256 = 235, bold = true }   # darkened Text
+tab_current      = "@focus.accent"
+tab_other        = "@base.secondary"
+
+[messages]
+senders = [
+  { hex = "#d20f39", x256 = 124, bold = true },   # Red
+  { hex = "#2f7a22", x256 = 22,  bold = true },   # Green, darkened
+  { hex = "#966010", x256 = 94,  bold = true },   # Yellow, darkened
+  { hex = "#04729f", x256 = 24,  bold = true },   # Sky, darkened
+  { hex = "#8839ef", x256 = 92,  bold = true },   # Mauve
+  { hex = "#b5480b", x256 = 124, bold = true },   # Peach, darkened (same 256 index as Red)
+]
+own           = "@base.text"
+timestamp     = "@base.secondary"
+day_separator = "@base.secondary"
+service_event = "@base.secondary"
+reply_bar     = { hex = "#9ca0b0", x256 = 247 }   # Overlay0
+preview_bar   = { hex = "#1e66f5", x256 = 27 }    # Blue
+sent          = "@base.secondary"
+read          = { hex = "#2f7a22", x256 = 22 }    # Green, darkened
+edited        = "@base.secondary"
+sending       = "@base.secondary"
+failed        = "@states.error"
+
+[format]
+link             = { hex = "#1c60e7", x256 = 26, underline = true }    # Blue, darkened
+mention          = { hex = "#167586", x256 = 23, bold = true }         # Sapphire, darkened
+hashtag          = "@format.mention"
+code_fg          = { hex = "#923a0b", x256 = 88 }                      # Peach, darkened
+code_bg          = { hex = "#ccd0da", x256 = 252 }                     # Surface0
+quote_bar        = "@messages.reply_bar"
+quote_text       = { hex = "#4c4f69", x256 = 60, italic = true }
+spoiler_hidden   = { hex = "#acb0be", x256 = 145 }                     # Surface2
+spoiler_revealed = { hex = "#4c4f69", x256 = 60, underline = true }
+
+[composer]
+input               = "@base.text"
+placeholder         = "@base.secondary"
+banner              = "@focus.accent"
+attachment          = "@messages.reply_bar"
+suggestion_selected = "@focus.selection_bg"
+
+[states]
+error      = { hex = "#d20f39", x256 = 124, bold = true }   # Red
+warning    = { hex = "#966010", x256 = 94 }                 # Yellow, darkened
+success    = { hex = "#2f7a22", x256 = 22 }                 # Green, darkened
+info       = "@states.success"
+connection = { hex = "#b5480b", x256 = 124 }                # Peach, darkened
+update     = { hex = "#10767c", x256 = 23 }                 # Teal, darkened

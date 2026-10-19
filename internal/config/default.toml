@@ -1,0 +1,41 @@
+# ~/.config/tgtui/config.toml  (defaults shown). Settings (,) writes this file.
+[telegram]
+# Your own API credentials from https://my.telegram.org. Optional in release builds, which
+# embed tgtui's. The TGTUI_API_ID / TGTUI_API_HASH environment variables take precedence.
+api_id   = 0
+api_hash = ""
+
+[appearance]
+theme       = "terminal"   # terminal (its own colours) | catppuccin-mocha | catppuccin-latte | harvest | harvest-light
+background  = "theme"      # theme (designed themes paint their background) | terminal (keep the terminal's)
+time_format = "24h"        # 24h | 12h
+
+[notifications]
+# Which messages notify is Telegram's choice (mute settings, exceptions, mentions).
+# mode: auto (the terminal's own notifications over ssh / tmux / in kitty, Ghostty, iTerm2,
+# WezTerm; the OS's otherwise) | terminal | system | off
+mode    = "auto"
+preview = true   # show the message text
+sound   = true   # ring the terminal bell (not for messages sent silently)
+
+[media]
+# How pictures show: auto (asks the terminal) | kitty (kitty / Ghostty graphics, also in
+# tmux with `set -g allow-passthrough on`) | blocks (coloured half blocks, any terminal) | off
+images = "auto"
+
+[keys]
+keymap  = "vim+telegram"   # vim+telegram (normal mode with letter keys) | telegram (no modes)
+open_in = "insert"         # insert | normal: the mode a chat opens in (vim+telegram)
+layout  = "us"             # us | it: Italian ISO keys for [ ] / ? ctrl+\ (è + - _ ctrl+ù); f3 works on both
+
+[updates]
+check = true   # look for a new release once a day
+
+[proxy]
+# type: "" (none) | socks5 | http | mtproto
+type     = ""
+server   = ""
+port     = 0
+username = ""
+password = ""
+secret   = ""   # mtproto only
