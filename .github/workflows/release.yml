@@ -10,6 +10,9 @@ on:
 permissions:
   contents: write
 
+env:
+  DOCKER_BUILD_RECORD_UPLOAD: false # no .dockerbuild artifacts next to the binaries
+
 jobs:
   linux:
     strategy:
@@ -41,7 +44,7 @@ jobs:
           file out/tgtui | grep -q 'statically linked'
           out/tgtui --version
           tar -C out -czf tgtui_linux_${{ matrix.arch }}.tar.gz tgtui
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: tgtui_linux_${{ matrix.arch }}
           path: tgtui_linux_${{ matrix.arch }}.tar.gz
@@ -50,8 +53,9 @@ jobs:
     needs: linux
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
+          pattern: tgtui_linux_*
           path: dist
           merge-multiple: true
       - name: Publish
