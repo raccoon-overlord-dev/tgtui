@@ -58,12 +58,12 @@ type model struct {
 
 	// from the settings, see applyConfig
 	images    termimg.Mode
-	notifyTo  string // off | terminal | system
-	clock     string // time.Format layout of times of day
-	kittyOK   bool   // the terminal answered the kitty graphics query
-	queried   bool   // … or answered the device attributes query that follows it
-	x256      bool   // a 256-colour terminal: themes use their x256 colours
-	theme     string // the theme loaded, with the background setting: "harvest/theme"
+	notifyTo  string    // off | terminal | system
+	clock     string    // time.Format layout of times of day
+	kittyOK   bool      // the terminal answered the kitty graphics query
+	typedAt   time.Time // when "typing" was last sent
+	x256      bool      // a 256-colour terminal: themes use their x256 colours
+	theme     string    // the theme loaded, with the background setting: "harvest/theme"
 	themeX256 bool
 
 	spin      int    // spinner frame
@@ -126,13 +126,10 @@ func newModel(c *core.Core, o Options) *model {
 func (m *model) applyConfig() {
 	cfg := m.o.Config
 	images := termimg.Detect(cfg.Media.Images)
-	// The terminal's answer beats the guess, except in herdr (0.8), which answers the kitty
-	// query with OK but shows no images, placed directly or with placeholders.
-	if cfg.Media.Images == "auto" && m.queried && os.Getenv("HERDR_ENV") == "" {
-		images = termimg.Blocks
-		if m.kittyOK {
-			images = termimg.Kitty
-		}
+	// A terminal that says it has kitty graphics gets them, except herdr (0.8), which says
+	// so but shows none. No answer proves the opposite: it can come late or not at all.
+	if cfg.Media.Images == "auto" && m.kittyOK && os.Getenv("HERDR_ENV") == "" {
+		images = termimg.Kitty
 	}
 	if images != m.images {
 		m.images, m.cache = images, map[lineKey]rendered{}
@@ -151,8 +148,7 @@ func (m *model) applyConfig() {
 	}
 }
 
-// kittyQuery asks whether the terminal has kitty graphics, then for its device attributes,
-// which every terminal answers: an answer to the second without one to the first means no.
+// kittyQuery asks whether the terminal has kitty graphics.
 // ponytail: in tmux the query only reaches the terminal with allow-passthrough on, and its
 // answer may not come back; there the environment guess stays.
 const kittyQuery = "\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\"
@@ -185,9 +181,9 @@ func run(f func() error) tea.Cmd {
 }
 
 func (m *model) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.wait(), m.checkUpdate(false)}
+	cmds := []tea.Cmd{m.wait(), m.checkUpdate(false), tea.Raw("\x1b[16t")} // cell size in pixels
 	if m.o.Config.Media.Images == "auto" && os.Getenv("TMUX") == "" {
-		cmds = append(cmds, tea.Raw(kittyQuery+"\x1b[c"))
+		cmds = append(cmds, tea.Raw(kittyQuery))
 	}
 	return tea.Batch(cmds...)
 }
@@ -210,10 +206,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case uv.KittyGraphicsEvent:
 		if msg.Options.ID == 31 && string(msg.Payload) == "OK" {
 			m.kittyOK = true
+			m.applyConfig()
 		}
-	case uv.PrimaryDeviceAttributesEvent:
-		m.queried = true
-		m.applyConfig()
+	case uv.CellSizeEvent:
+		if msg.Width > 0 && msg.Height > 0 {
+			termimg.CellW, termimg.CellH = msg.Width, msg.Height
+			m.cache = map[lineKey]rendered{}
+		}
 	case updateMsg:
 		m.updated(msg)
 	case tea.FocusMsg:

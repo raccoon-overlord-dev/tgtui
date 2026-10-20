@@ -209,6 +209,14 @@ type update struct {
 	EditDate         int64           `json:"edit_date"`
 	IsPermanent      bool            `json:"is_permanent"`
 	File             *tdFile         `json:"file"`
+	SenderID         struct {
+		Type   string `json:"@type"`
+		UserID int64  `json:"user_id"`
+		ChatID int64  `json:"chat_id"`
+	} `json:"sender_id"`
+	Action struct {
+		Type string `json:"@type"`
+	} `json:"action"`
 
 	AddedNotifications json.RawMessage `json:"added_notifications"`
 	GroupType          struct {

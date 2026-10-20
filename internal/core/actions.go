@@ -55,6 +55,13 @@ func (c *Core) SendText(text string, replyTo int64) error {
 	return c.send(req)
 }
 
+// SendTyping tells the open chat's members that the user is typing. It lasts a few
+// seconds; sending a message ends it.
+func (c *Core) SendTyping() error {
+	return c.send(map[string]any{"@type": "sendChatAction", "chat_id": c.openID(),
+		"action": map[string]any{"@type": "chatActionTyping"}})
+}
+
 // Markdown is m's text with its formatting written back as markup, to edit it. Mentions of
 // users without a username become [Name](tg://user?id=N); underline, which markup can't
 // express, is lost.

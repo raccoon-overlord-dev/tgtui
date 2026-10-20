@@ -264,3 +264,24 @@ func TestLookup(t *testing.T) {
 		t.Fatalf("username: %+v %v", f, err)
 	}
 }
+
+// Chat actions: one entry per sender, replaced by its next action, dropped on cancel.
+func TestTyping(t *testing.T) {
+	c := New(&historyTD{}, Params{})
+	act := func(user int, action string) {
+		c.Apply(json.RawMessage(fmt.Sprintf(`{"@type":"updateChatAction","chat_id":3,"sender_id":{"@type":"messageSenderUser","user_id":%d},"action":{"@type":"%s"}}`, user, action)))
+	}
+	c.Apply(json.RawMessage(`{"@type":"updateNewChat","chat":{"id":3,"title":"G","type":{"@type":"chatTypeBasicGroup"},"positions":[]}}`))
+	c.Apply(json.RawMessage(`{"@type":"updateUser","user":{"id":7,"first_name":"Jane","usernames":{}}}`))
+	act(7, "chatActionTyping")
+	act(8, "chatActionTyping")
+	act(7, "chatActionRecordingVoiceNote")
+	if got := c.Chat(3).Typing; len(got) != 2 || got[0].SenderID != 8 || got[1] != (Typing{7, "Jane", "recording a voice note"}) {
+		t.Fatalf("typing: %+v", got)
+	}
+	act(8, "chatActionCancel")
+	act(7, "chatActionCancel")
+	if got := c.Chat(3).Typing; len(got) != 0 {
+		t.Fatalf("after cancel: %+v", got)
+	}
+}

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -494,7 +495,13 @@ func (m *model) editKey(k tea.KeyPressMsg) tea.Cmd {
 	case "pgdown":
 		m.scroll(-max(m.paneHeight()/2, 1))
 	default:
+		before := m.comp.value()
 		m.comp.key(k, true)
+		// Telegram apps repeat "typing" every few seconds while it lasts; not for edits.
+		if v := m.comp.value(); v != before && v != "" && m.editID == 0 && time.Since(m.typedAt) > 5*time.Second {
+			m.typedAt = time.Now()
+			return run(m.c.SendTyping)
+		}
 	}
 	return nil
 }

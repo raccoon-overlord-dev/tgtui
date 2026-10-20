@@ -69,9 +69,26 @@ type Chat struct {
 	ReadOutbox   int64 // outgoing messages up to here were read
 	Muted        bool  // by its own setting or its kind's default
 	Last         *Message
+	Typing       []Typing // who is typing (or recording, sending…) now, oldest first
 	positions    []tdPosition
 	notify       tdNotifySettings
 	notifyRaw    json.RawMessage // all of TDLib's settings, to change only the mute
+}
+
+// Typing is a member's current action in a chat, as words: "typing", "recording a voice note".
+type Typing struct {
+	SenderID int64
+	Name     string
+	Action   string
+}
+
+// actions are the chat actions tgtui shows; TDLib cancels each after a few seconds.
+var actions = map[string]string{
+	"chatActionTyping": "typing", "chatActionRecordingVoiceNote": "recording a voice note",
+	"chatActionRecordingVideo": "recording a video", "chatActionRecordingVideoNote": "recording a video",
+	"chatActionUploadingPhoto": "sending a photo", "chatActionUploadingVideo": "sending a video",
+	"chatActionUploadingVoiceNote": "sending a voice note", "chatActionUploadingVideoNote": "sending a video",
+	"chatActionUploadingDocument": "sending a file", "chatActionChoosingSticker": "choosing a sticker",
 }
 
 // Pinned reports whether the chat is pinned in list l.
@@ -150,6 +167,18 @@ func (c *Core) applyChat(u *update) {
 		ch.Mentions = u.UnreadMentions
 	case "updateChatIsMarkedAsUnread":
 		ch.MarkedUnread = u.IsMarkedAsUnread
+	case "updateChatAction":
+		id, name := u.SenderID.UserID, c.users[u.SenderID.UserID]
+		if u.SenderID.Type == "messageSenderChat" {
+			id, name = u.SenderID.ChatID, ""
+			if sc := c.chats[id]; sc != nil {
+				name = sc.Title
+			}
+		}
+		ch.Typing = slices.DeleteFunc(slices.Clone(ch.Typing), func(t Typing) bool { return t.SenderID == id })
+		if a := actions[u.Action.Type]; a != "" {
+			ch.Typing = append(ch.Typing, Typing{id, name, a})
+		}
 	default:
 		return
 	}

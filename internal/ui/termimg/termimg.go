@@ -25,15 +25,21 @@ const (
 	Kitty  Mode = "kitty"
 )
 
+// CellW × CellH is a cell's size in pixels, as the terminal reports it (CSI 16 t);
+// the default is a typical 1:2 cell.
+var CellW, CellH = 10, 20
+
 // Detect picks the mode for this terminal; setting is the config value (auto | kitty | blocks | off).
 // Kitty graphics only where the terminal is known to have them: guessing wrong prints garbage.
-// ponytail: from the environment, no terminal query; the setting overrides it.
+// The UI also asks the terminal, which can only add kitty to this guess.
 func Detect(setting string) Mode {
 	if setting != "" && setting != "auto" {
 		return Mode(setting)
 	}
 	term, prog := os.Getenv("TERM"), os.Getenv("TERM_PROGRAM")
 	switch {
+	case os.Getenv("HERDR_ENV") != "":
+		return Blocks // herdr (0.8) says it has kitty graphics but shows none
 	case term == "xterm-kitty", term == "xterm-ghostty", prog == "ghostty":
 		return Kitty
 	case os.Getenv("TMUX") != "" && (os.Getenv("KITTY_WINDOW_ID") != "" || os.Getenv("GHOSTTY_RESOURCES_DIR") != ""):
@@ -57,17 +63,16 @@ func Decode(path string, data []byte) (image.Image, error) {
 	return img, err
 }
 
-// Size fits an image of w×h pixels in at most maxCols×maxRows cells, keeping its aspect
-// (a cell is about twice as tall as wide).
+// Size fits an image of w×h pixels in at most maxCols×maxRows cells, keeping its aspect.
 func Size(w, h, maxCols, maxRows int) (cols, rows int) {
 	if w <= 0 || h <= 0 {
 		return 0, 0
 	}
 	rows = maxRows
-	cols = rows * 2 * w / h
+	cols = rows * CellH * w / (CellW * h)
 	if cols > maxCols {
 		cols = maxCols
-		rows = max(cols*h/(2*w), 1)
+		rows = max(cols*CellW*h/(CellH*w), 1)
 	}
 	return max(cols, 1), rows
 }
@@ -95,12 +100,19 @@ func DrawBlocks(img image.Image, cols, rows int) []string {
 }
 
 // Transmit is the escape sequence that sends img to the terminal as image id, with a
-// virtual placement of cols×rows cells for Placeholders to show.
+// virtual placement of cols×rows cells for Placeholders to show. The image goes on a
+// transparent canvas of exactly those cells' pixels: the terminal then has no margins to
+// add, which Ghostty gets wrong in the edge rows.
 func Transmit(id uint32, img image.Image, cols, rows int) string {
 	b := img.Bounds()
-	if w := min(b.Dx(), cols*12); w < b.Dx() { // about a cell's pixels: no need to send more
-		img = scale(img, w, max(b.Dy()*w/b.Dx(), 1))
+	cw, ch := cols*CellW, rows*CellH
+	w, h := cw, max(b.Dy()*cw/b.Dx(), 1)
+	if h > ch {
+		w, h = max(b.Dx()*ch/b.Dy(), 1), ch
 	}
+	canvas := image.NewRGBA(image.Rect(0, 0, cw, ch))
+	draw.ApproxBiLinear.Scale(canvas, image.Rect(0, 0, w, h), img, b, draw.Src, nil)
+	img = canvas
 	var buf bytes.Buffer
 	png.Encode(&buf, img)
 	data := base64.StdEncoding.EncodeToString(buf.Bytes())

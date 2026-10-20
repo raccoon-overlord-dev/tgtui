@@ -165,7 +165,7 @@ func dayLabel(t time.Time) string {
 }
 
 // msgLines renders message i of the window in w cells (the pane's inner width, padding
-// columns included): the day separator, a blank row before a new group, the sender line
+// columns included): the day separator, a rule before a new group, the sender line
 // (when the sender changes or 5 minutes pass), then the blocks. Own messages are right
 // aligned, without a name line, with the time and state after the last line.
 func (m *model) msgLines(i, w int, ch *core.Chat) rendered {
@@ -201,13 +201,12 @@ func (m *model) msgLines(i, w int, ch *core.Chat) rendered {
 	if r, ok := m.cache[key]; ok {
 		return r
 	}
-	blank := strings.Repeat(" ", w)
 	var out []string
 	if day {
 		out = append(out, " "+center(dim.Render(dayLabel(t)), cw)+" ")
 	}
 	if gap {
-		out = append(out, blank)
+		out = append(out, " "+borderSt.Render(strings.Repeat("─", cw))+" ")
 	}
 	start := len(out)
 	if svc {
@@ -523,6 +522,9 @@ func (m *model) chatPane(w, h int) []string {
 	head := ""
 	if ch != nil {
 		head = title.Render(m.chatName(ch)) + "  " + dim.Render([]string{"private", "group", "channel"}[ch.Kind])
+		if typ := typingText(ch); typ != "" {
+			head = title.Render(m.chatName(ch)) + "  " + accent.Render(typ)
+		}
 		if m.w < 70 {
 			head = dim.Render("‹ Chats") + "  " + title.Render(m.chatName(ch))
 		}

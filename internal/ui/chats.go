@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -116,14 +117,37 @@ func (m *model) chatRow(ch *core.Chat, iw int, sel, bar bool, list core.ChatList
 	}
 	preview := ""
 	if ch.Last != nil {
-		preview = m.preview(ch)
+		preview = s.Render(m.preview(ch))
+	}
+	if typ := typingText(ch); typ != "" {
+		preview = accent.Render(typ)
+		if sel {
+			preview = s.Render(typ)
+		}
 	}
 	l1 := row(iw, fill, name.Render(ansi.Truncate(m.chatName(ch), max(iw-ansi.StringWidth(when)-1, 1), "…")), s.Render(when))
-	l2 := row(iw, fill, s.Render(preview), strings.Join(badges, fill.Render(" ")))
+	l2 := row(iw, fill, preview, strings.Join(badges, fill.Render(" ")))
 	if bar {
 		l1, l2 = accent.Render("▌")+l1[1:], accent.Render("▌")+l2[1:] // rows start with a plain space
 	}
 	return l1, l2
+}
+
+// typingText says who is typing in ch: "typing…" in a private chat, "Marco typing…" or
+// "Marco +2 typing…" in a group; "" when nobody is.
+func typingText(ch *core.Chat) string {
+	if len(ch.Typing) == 0 {
+		return ""
+	}
+	t := ch.Typing[0]
+	if ch.Kind == core.ChatPrivate {
+		return t.Action + "…"
+	}
+	who := t.Name
+	if n := len(ch.Typing) - 1; n > 0 {
+		who += fmt.Sprintf(" +%d", n)
+	}
+	return strings.TrimSpace(who + " " + t.Action + "…")
 }
 
 func (m *model) preview(ch *core.Chat) string {
