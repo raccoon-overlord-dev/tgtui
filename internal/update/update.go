@@ -50,6 +50,15 @@ var client = &http.Client{
 // stamp holds the last tag seen; its mtime is when it was checked.
 func stamp() string { return filepath.Join(config.CacheDir(), "latest-version") }
 
+// LastChecked is when GitHub was last asked for the latest release (zero: never).
+func LastChecked() time.Time {
+	fi, err := os.Stat(stamp())
+	if err != nil {
+		return time.Time{}
+	}
+	return fi.ModTime()
+}
+
 // Check returns the latest release tag, asking GitHub at most once a day unless force is set
 // (a manual check).
 func Check(ctx context.Context, force bool) (string, error) {

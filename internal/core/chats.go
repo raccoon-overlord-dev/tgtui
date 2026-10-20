@@ -259,6 +259,14 @@ func (c *Core) Chat(id int64) *Chat {
 	return c.chats[id]
 }
 
+// UnreadChats is how many chats of list l have unread messages or are marked as unread,
+// muted ones left out, as on the official apps' folder tabs.
+func (c *Core) UnreadChats(l ChatList) int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.unreadIn[l]
+}
+
 // LoadList makes TDLib send the chats of l, as updates. Only the first call per list does anything.
 func (c *Core) LoadList(l ChatList) {
 	c.mu.Lock()

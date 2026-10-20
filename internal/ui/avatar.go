@@ -89,6 +89,7 @@ func initials(name string, id int64, cols, rows int) []string {
 // of pictures not on disk yet.
 func (m *model) warmAvatars() []tea.Cmd {
 	if m.o.Config.Appearance.Avatars && m.images == termimg.Kitty {
+		m.scrollList() // as listPane will
 		for i := m.listTop; i < min(m.listTop+m.listRows(), len(m.chats)); i++ {
 			m.chatAvatar(m.chats[i], 4, 2)
 		}

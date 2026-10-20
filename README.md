@@ -17,7 +17,8 @@ tgtui is not affiliated with or endorsed by Telegram.
 
 ## Features
 
-- Chat list with folders and the archive, private chats, groups and read-only channels
+- Chat list with folders (with their unread counts) and the archive, private chats, groups and
+  read-only channels; `✓` / `✓✓` on your last message
 - Formatted messages (bold, italic, code, links, spoilers, quotes), replies, edits, delete, forward
 - Photos and stickers inline (kitty graphics, or coloured half blocks in any terminal),
   sending files and albums (picked in the system's file dialog or typed), opening and saving attachments
@@ -32,7 +33,7 @@ tgtui is not affiliated with or endorsed by Telegram.
 - Two keymaps: `default` (letter keys, the same as [ticktick-tui](https://github.com/raccoon-overlord-dev/ticktick-tui)'s
   where both apps have the action) and `telegram` (no letter keys), US and Italian keyboard layouts
 - Themes: `terminal` (your terminal's colours), `catppuccin-mocha`, `catppuccin-latte`,
-  `harvest`, `harvest-light`
+  `harvest`, `harvest-light`; optionally switching between the light and dark one to match the terminal
 - Fast: the chat list comes from TDLib's local database before the network answers
 
 ## Install

@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"encoding/json"
+	"github.com/charmbracelet/x/ansi"
 	"os"
 	"path/filepath"
 	"slices"
@@ -306,5 +308,24 @@ func TestContextHints(t *testing.T) {
 				t.Errorf("%s, %s: hints %q, want %q first", keymap, msg.Kind, got, exp)
 			}
 		}
+	}
+}
+
+// The chat list shows the state of your last message, and the tabs their unread chats.
+func TestListMarksAndCounts(t *testing.T) {
+	m := legacyModel(t, "default")
+	ch := *m.chats[0]
+	ch.Kind, ch.ReadOutbox = core.ChatPrivate, 10
+	ch.Last = &core.Message{ID: 10, Kind: "Text", Text: "hi", Outgoing: true, Date: 1_790_000_000}
+	if l1, _ := m.chatRow(&ch, 40, false, false, core.Main); !strings.Contains(ansi.Strip(l1), "✓✓") {
+		t.Fatalf("read: %q", ansi.Strip(l1))
+	}
+	ch.ReadOutbox = 9
+	if l1, _ := m.chatRow(&ch, 40, false, false, core.Main); !strings.Contains(ansi.Strip(l1), "✓ ") || strings.Contains(l1, "✓✓") {
+		t.Fatalf("sent: %q", ansi.Strip(l1))
+	}
+	m.c.Apply(json.RawMessage(`{"@type":"updateUnreadChatCount","chat_list":{"@type":"chatListFolder","chat_folder_id":1},"unread_unmuted_count":3}`))
+	if tabs := ansi.Strip(m.tabsTitle(60)); !strings.Contains(tabs, "Work 3") {
+		t.Fatalf("tabs: %q", tabs)
 	}
 }

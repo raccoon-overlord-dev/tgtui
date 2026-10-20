@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/raccoon-overlord-dev/tgtui/internal/config"
+	"github.com/raccoon-overlord-dev/tgtui/internal/ui/termimg"
 	"github.com/raccoon-overlord-dev/tgtui/internal/update"
 )
 
@@ -44,6 +45,7 @@ var settingRows = []setRow{
 	choice("Appearance", "Theme", themeNames, func(c *config.Config) *string { return &c.Appearance.Theme }),
 	choice("Appearance", "Background", []string{"theme", "terminal"}, func(c *config.Config) *string { return &c.Appearance.Background }),
 	choice("Appearance", "Time format", []string{"24h", "12h"}, func(c *config.Config) *string { return &c.Appearance.TimeFormat }),
+	onOff("Appearance", "Follow light / dark", func(c *config.Config) *bool { return &c.Appearance.AutoDark }),
 	onOff("Appearance", "Profile pictures", func(c *config.Config) *bool { return &c.Appearance.Avatars }),
 	choice("Appearance", "Images", []string{"auto", "kitty", "blocks", "off"}, func(c *config.Config) *string { return &c.Media.Images }),
 
@@ -187,8 +189,18 @@ func (m *model) settingsView(h int) []string {
 			val = s.Render("‹ ") + v.Render(r.get(m.o.Config)) + s.Render(" ›")
 		}
 		note := ""
-		if r.label == "Theme" && iw-lab-ansi.StringWidth(val) > 30 {
+		switch {
+		case r.label == "Theme" && m.themeUsed != m.o.Config.Appearance.Theme:
+			note = s.Render("now " + m.themeUsed + ", for the terminal's background")
+		case r.label == "Theme":
 			note = s.Render(map[bool]string{true: "uses its own background", false: "the terminal's colours"}[paintSeq != ""])
+		case r.label == "Images" && r.get(m.o.Config) == "auto":
+			note = s.Render(map[termimg.Mode]string{termimg.Kitty: "kitty graphics detected", termimg.Blocks: "no kitty graphics: half blocks"}[m.images])
+		case r.label == "Check now" && !update.LastChecked().IsZero():
+			note = s.Render("checked " + m.shortTime(update.LastChecked().Unix()) + " · " + m.checked)
+		}
+		if iw-lab-ansi.StringWidth(val)-ansi.StringWidth(note) < 4 {
+			note = ""
 		}
 		if sel {
 			selLine = len(lines)
@@ -241,11 +253,20 @@ func (m *model) checkUpdate(manual bool) tea.Cmd {
 }
 
 func (m *model) updated(u updateMsg) {
+	if u.err != nil {
+		m.checked = "failed"
+		if u.manual {
+			m.flash = "✕ Update check failed: " + u.err.Error()
+		}
+		return
+	}
+	m.checked = "up to date"
+	if m.o.Version == "dev" {
+		m.checked = "latest " + u.tag
+	}
 	switch {
-	case u.err != nil && u.manual:
-		m.flash = "✕ Update check failed: " + u.err.Error()
 	case update.Newer(u.tag, m.o.Version):
-		m.newVersion = u.tag
+		m.checked, m.newVersion = u.tag+" available", u.tag
 		if u.manual {
 			m.flash = "tgtui " + u.tag + " is available: Settings › Install update"
 		}

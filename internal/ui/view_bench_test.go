@@ -250,3 +250,25 @@ func TestAvatarsFit(t *testing.T) {
 		}
 	}
 }
+
+// Pictures that come into view as the list scrolls are sent before the frame shows
+// them: View must find nothing left to transmit.
+func TestAvatarsSentBeforeFrame(t *testing.T) {
+	var jpg bytes.Buffer
+	jpeg.Encode(&jpg, image.NewRGBA(image.Rect(0, 0, 8, 8)), nil)
+	m := demo(120, 40)
+	m.images = termimg.Kitty
+	for i, ch := range m.chats[:40] {
+		c := *ch
+		c.Photo = core.Photo{Mini: jpg.Bytes()}
+		m.chats[i] = &c
+	}
+	m.focus = focusList
+	for range 30 {
+		m.Update(keyMsg("j"))
+		m.View()
+		if len(m.sendQ) > 0 {
+			t.Fatalf("row %d: %d transmissions queued while drawing, sent only on the next update", m.sel, len(m.sendQ))
+		}
+	}
+}

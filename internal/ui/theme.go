@@ -117,6 +117,22 @@ func (f themeFile) style(fg, bg string) lipgloss.Style {
 
 // setTheme loads the theme name (terminal when unknown) into the styles. paint false keeps
 // the terminal's background whatever the theme says (Settings › Background).
+// themeFor is name, or its pair ([meta] pair) when name is a dark theme on a light
+// terminal or the other way round. The terminal theme has no pair.
+func themeFor(name string, dark bool) string {
+	var f struct {
+		Meta struct{ Variant, Pair string } `toml:"meta"`
+	}
+	b, err := themeFiles.ReadFile("themes/" + name + ".toml")
+	if err != nil || toml.Unmarshal(b, &f) != nil || f.Meta.Pair == "" {
+		return name
+	}
+	if f.Meta.Variant == "dark" && !dark || f.Meta.Variant == "light" && dark {
+		return f.Meta.Pair
+	}
+	return name
+}
+
 func setTheme(name string, x256, paint bool) {
 	f := themeFile{x256: x256}
 	b, err := themeFiles.ReadFile("themes/" + name + ".toml")

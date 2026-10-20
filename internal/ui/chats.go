@@ -35,7 +35,11 @@ func (m *model) tabsTitle(w int) string {
 		if t.ID == core.Main {
 			name = "All"
 		}
-		add := ansi.StringWidth(name)
+		count := ""
+		if n := m.c.UnreadChats(t.ID); n > 0 {
+			count = " " + strconv.Itoa(n)
+		}
+		add := ansi.StringWidth(name + count)
 		if i > 0 {
 			add += 2
 		}
@@ -51,16 +55,21 @@ func (m *model) tabsTitle(w int) string {
 		} else {
 			b.WriteString(dim.Render(name))
 		}
+		b.WriteString(title.Render(count))
 		n += add
 	}
 	return b.String()
 }
 
+// scrollList keeps the selected chat in view.
+func (m *model) scrollList() {
+	m.listTop = max(min(m.listTop, m.sel), m.sel-m.listRows()+1)
+}
+
 // listPane is the chat list as h lines of width w.
 func (m *model) listPane(w, h int) []string {
 	focused := m.focus == focusList
-	m.listTop = min(m.listTop, m.sel)
-	m.listTop = max(m.listTop, m.sel-m.listRows()+1)
+	m.scrollList()
 	var inner []string
 	list := m.tabs()[min(m.tab, len(m.tabs())-1)].ID
 	for i := m.listTop; i < len(m.chats); i++ {
@@ -97,6 +106,21 @@ func (m *model) chatRow(ch *core.Chat, iw int, sel, bar bool, list core.ChatList
 	if ch.Pinned(list) {
 		when = strings.TrimSpace("↑ " + when)
 	}
+	whenR := s.Render(when)
+	if l := ch.Last; l != nil && l.Outgoing && ch.Kind != core.ChatChannel && service[l.Kind] == "" { // as in Telegram: the state of your last message
+		mark := s.Render("✓")
+		switch {
+		case l.Failed:
+			mark = bad.Render("✕")
+		case l.Sending:
+			mark = s.Render("…")
+		case l.ID <= ch.ReadOutbox && !sel:
+			mark = readMark.Render("✓✓")
+		case l.ID <= ch.ReadOutbox:
+			mark = s.Render("✓✓")
+		}
+		whenR = mark + s.Render(" "+when)
+	}
 	var badges []string
 	if ch.ID != m.open { // the open chat is being read
 		if ch.Mentions > 0 {
@@ -132,7 +156,7 @@ func (m *model) chatRow(ch *core.Chat, iw int, sel, bar bool, list core.ChatList
 	if av != nil { // the picture, then the row's own padding column as the gap
 		iw -= 5
 	}
-	l1 := row(iw, fill, name.Render(ansi.Truncate(m.chatName(ch), max(iw-ansi.StringWidth(when)-1, 1), "…")), s.Render(when))
+	l1 := row(iw, fill, name.Render(ansi.Truncate(m.chatName(ch), max(iw-ansi.StringWidth(whenR)-1, 1), "…")), whenR)
 	l2 := row(iw, fill, preview, strings.Join(badges, fill.Render(" ")))
 	if av != nil {
 		l1, l2 = fill.Render(" ")+av[0]+l1, fill.Render(" ")+av[1]+l2

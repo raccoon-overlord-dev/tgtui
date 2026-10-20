@@ -93,7 +93,8 @@ type Core struct {
 	users      map[int64]string // display names, for message senders
 	usernames  map[int64]string
 	userPhotos map[int64]Photo
-	chats      map[int64]*Chat // values are replaced, never changed, so copies can share them
+	unreadIn   map[ChatList]int // unread unmuted chats of each list, from updateUnreadChatCount
+	chats      map[int64]*Chat  // values are replaced, never changed, so copies can share them
 	loaded     map[ChatList]bool
 	win        Window // the open chat
 	viewed     int64  // newest message of win already passed to viewMessages
@@ -105,7 +106,7 @@ type Core struct {
 
 func New(td TD, p Params) *Core {
 	return &Core{td: td, params: p, changed: make(chan struct{}, 1), closed: make(chan struct{}),
-		users: map[int64]string{}, usernames: map[int64]string{}, userPhotos: map[int64]Photo{}, chats: map[int64]*Chat{}, loaded: map[ChatList]bool{}, files: map[int32]File{}, scopeMute: map[ChatKind]int64{}, replies: map[[2]int64]*Message{}}
+		users: map[int64]string{}, usernames: map[int64]string{}, userPhotos: map[int64]Photo{}, unreadIn: map[ChatList]int{}, chats: map[int64]*Chat{}, loaded: map[ChatList]bool{}, files: map[int32]File{}, scopeMute: map[ChatKind]int64{}, replies: map[[2]int64]*Message{}}
 }
 
 // Changed receives after the state changed. Bursts collapse into one receive.
@@ -163,6 +164,8 @@ func (c *Core) Apply(raw json.RawMessage) {
 			if u.Name == "version" {
 				json.Unmarshal(u.Value.Value, &c.snap.TDLib)
 			}
+		case "updateUnreadChatCount":
+			c.unreadIn[u.ChatList.list()] = u.UnreadUnmuted
 		case "updateConnectionState":
 			c.snap.Conn = strings.TrimPrefix(u.State.Type, "connectionState")
 		case "updateChatFolders":
@@ -199,7 +202,9 @@ type update struct {
 	Chat             *tdChat         `json:"chat"`
 	ChatID           int64           `json:"chat_id"`
 	Title            string          `json:"title"`
-	Photo            *tdChatPhoto    `json:"photo"` // updateChatPhoto
+	Photo            *tdChatPhoto    `json:"photo"`                // updateChatPhoto
+	ChatList         tdList          `json:"chat_list"`            // updateUnreadChatCount
+	UnreadUnmuted    int             `json:"unread_unmuted_count"` // updateUnreadChatCount
 	Position         *tdPosition     `json:"position"`
 	Positions        []tdPosition    `json:"positions"`
 	LastMessage      *tdMessage      `json:"last_message"`

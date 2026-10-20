@@ -25,6 +25,7 @@ type Config struct {
 		Background string `toml:"background"`  // theme | terminal: paint the theme's background, or keep the terminal's
 		TimeFormat string `toml:"time_format"` // 24h | 12h
 		Avatars    bool   `toml:"avatars"`     // profile pictures in the list, the chat title and group sender lines
+		AutoDark   bool   `toml:"auto_dark"`   // switch to the theme's light / dark pair to match the terminal
 	} `toml:"appearance"`
 	Notifications struct {
 		Mode    string `toml:"mode"` // auto | off | terminal | system

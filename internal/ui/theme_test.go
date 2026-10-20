@@ -1,6 +1,8 @@
 package ui
 
 import (
+	tea "charm.land/bubbletea/v2"
+	"image/color"
 	"os"
 	"strings"
 	"testing"
@@ -69,5 +71,27 @@ func TestIconFile(t *testing.T) {
 	b, err := os.ReadFile("../../docs/icon.svg")
 	if err != nil || string(b) != iconSVG("#1c1612", "#e8833a") {
 		t.Fatalf("docs/icon.svg is not iconSVG in harvest's colours (%v); rewrite it from iconSVG", err)
+	}
+}
+
+// Follow light / dark: a theme on the wrong kind of terminal background gives way to its
+// pair, as soon as the terminal reports its colour.
+func TestAutoDark(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		dark bool
+		want string
+	}{{"harvest", false, "harvest-light"}, {"harvest", true, "harvest"}, {"catppuccin-latte", true, "catppuccin-mocha"},
+		{"harvest-light", false, "harvest-light"}, {"terminal", false, "terminal"}} {
+		if got := themeFor(c.name, c.dark); got != c.want {
+			t.Errorf("themeFor(%s, dark %v) = %s", c.name, c.dark, got)
+		}
+	}
+	defer setTheme("terminal", false, false)
+	m := demo(100, 30)
+	m.o.Config.Appearance.Theme, m.o.Config.Appearance.AutoDark = "harvest", true
+	m.Update(tea.BackgroundColorMsg{Color: color.White})
+	if m.themeUsed != "harvest-light" {
+		t.Fatalf("light terminal: theme %s", m.themeUsed)
 	}
 }

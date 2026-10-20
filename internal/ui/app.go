@@ -60,19 +60,23 @@ type model struct {
 	focused int // focusUnknown | focusHere | focusAway
 
 	// from the settings, see applyConfig
-	images    termimg.Mode
-	notifyTo  string    // off | terminal | system
-	clock     string    // time.Format layout of times of day
-	kittyOK   bool      // the terminal answered the kitty graphics query
-	play      *playback // the voice or audio message playing or paused
-	playGen   int
-	rec       *recording         // the voice note being recorded
-	avatars   map[avKey][]string // profile pictures drawn, kitty images among them sent
-	avatarDL  []int32            // pictures to download, found while drawing
-	typedAt   time.Time          // when "typing" was last sent
-	x256      bool               // a 256-colour terminal: themes use their x256 colours
-	theme     string             // the theme loaded, with the background setting: "harvest/theme"
-	themeX256 bool
+	images     termimg.Mode
+	notifyTo   string    // off | terminal | system
+	clock      string    // time.Format layout of times of day
+	kittyOK    bool      // the terminal answered the kitty graphics query
+	play       *playback // the voice or audio message playing or paused
+	playGen    int
+	rec        *recording         // the voice note being recorded
+	avatars    map[avKey][]string // profile pictures drawn, kitty images among them sent
+	termDark   *bool              // the terminal's background is dark; nil until it answers
+	themeUsed  string             // the theme in use: the setting's, or its light / dark pair
+	checked    string             // the last update check's result, for Settings
+	loadedTabs bool               // every folder was asked for its chats, for the tab counts
+	avatarDL   []int32            // pictures to download, found while drawing
+	typedAt    time.Time          // when "typing" was last sent
+	x256       bool               // a 256-colour terminal: themes use their x256 colours
+	theme      string             // the theme loaded, with the background setting: "harvest/theme"
+	themeX256  bool
 
 	spin      int    // spinner frame
 	ticking   bool   // a spinner tick is on its way
@@ -149,8 +153,12 @@ func (m *model) applyConfig() {
 	if clock != m.clock {
 		m.clock, m.cache = clock, map[lineKey]rendered{}
 	}
-	if th := cfg.Appearance.Theme + "/" + cfg.Appearance.Background; th != m.theme || m.x256 != m.themeX256 {
-		setTheme(cfg.Appearance.Theme, m.x256, cfg.Appearance.Background != "terminal")
+	m.themeUsed = cfg.Appearance.Theme
+	if cfg.Appearance.AutoDark && m.termDark != nil {
+		m.themeUsed = themeFor(m.themeUsed, *m.termDark)
+	}
+	if th := m.themeUsed + "/" + cfg.Appearance.Background; th != m.theme || m.x256 != m.themeX256 {
+		setTheme(m.themeUsed, m.x256, cfg.Appearance.Background != "terminal")
 		m.theme, m.themeX256, m.cache, m.avatars = th, m.x256, map[lineKey]rendered{}, map[avKey][]string{}
 	}
 }
@@ -188,7 +196,7 @@ func run(f func() error) tea.Cmd {
 }
 
 func (m *model) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.wait(), m.checkUpdate(false), tea.Raw("\x1b[16t")} // cell size in pixels
+	cmds := []tea.Cmd{m.wait(), m.checkUpdate(false), tea.Raw("\x1b[16t"), tea.RequestBackgroundColor} // cell size in pixels
 	if m.o.Config.Media.Images == "auto" && os.Getenv("TMUX") == "" {
 		cmds = append(cmds, tea.Raw(kittyQuery))
 	}
@@ -229,6 +237,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updated(msg)
 	case tea.FocusMsg:
 		m.focused = focusHere
+		cmd = tea.RequestBackgroundColor // the system may have switched to light or dark meanwhile
+	case tea.BackgroundColorMsg:
+		dark := msg.IsDark()
+		m.termDark = &dark
+		m.applyConfig()
 	case tea.BlurMsg:
 		m.focused = focusAway
 	case changedMsg:
@@ -241,6 +254,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.auth = authState{}
 		}
 		m.refresh()
+		if !m.loadedTabs && len(m.snap.Lists) > 1 { // TDLib counts a folder's unread chats once it has loaded it
+			m.loadedTabs = true
+			for _, l := range m.tabs() {
+				go m.c.LoadList(l.ID)
+			}
+		}
 		if m.o.ExitWhenListed && len(m.chats) > 0 {
 			return m, tea.Quit
 		}

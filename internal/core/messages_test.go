@@ -318,3 +318,13 @@ func TestPhotos(t *testing.T) {
 		t.Fatal("removed photo")
 	}
 }
+
+// Folder tabs count unread unmuted chats per list.
+func TestUnreadChats(t *testing.T) {
+	c := New(&historyTD{}, Params{})
+	c.Apply(json.RawMessage(`{"@type":"updateUnreadChatCount","chat_list":{"@type":"chatListFolder","chat_folder_id":3},"unread_count":5,"unread_unmuted_count":2}`))
+	c.Apply(json.RawMessage(`{"@type":"updateUnreadChatCount","chat_list":{"@type":"chatListMain"},"unread_count":9,"unread_unmuted_count":4}`))
+	if c.UnreadChats(FolderList(3)) != 2 || c.UnreadChats(Main) != 4 || c.UnreadChats(Archive) != 0 {
+		t.Fatal(c.UnreadChats(FolderList(3)), c.UnreadChats(Main))
+	}
+}
