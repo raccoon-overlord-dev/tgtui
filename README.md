@@ -39,7 +39,7 @@ tgtui is not affiliated with or endorsed by Telegram.
 ## Install
 
 Linux (x86_64 and arm64): a single static binary that runs on any distribution. macOS 12 or
-later (Apple silicon and Intel): a binary that needs only the system's libraries.
+later on Apple silicon: a binary that needs only the system's libraries.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/raccoon-overlord-dev/tgtui/main/install.sh | sh

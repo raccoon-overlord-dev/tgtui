@@ -55,10 +55,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - arch: arm64
+          - arch: arm64 # Apple silicon only: no Intel Mac build
             runner: macos-15
-          - arch: amd64
-            runner: macos-15-intel
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     steps:

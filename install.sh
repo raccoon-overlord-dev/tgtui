@@ -80,6 +80,11 @@ x86_64 | amd64) arch=amd64 ;;
 aarch64 | arm64) arch=arm64 ;;
 *) die "unsupported CPU $(uname -m)" ;;
 esac
+if [ "$os" = darwin ] && [ "$arch" = amd64 ]; then
+	# A shell under Rosetta reports x86_64 on Apple silicon.
+	[ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = 1 ] || die "tgtui runs on Macs with Apple silicon only"
+	arch=arm64
+fi
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT INT TERM
