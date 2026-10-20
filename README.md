@@ -1,6 +1,6 @@
-<img src="docs/icon.svg" width="96" alt="tgtui icon: a speech bubble holding a prompt">
 
-# tgtui
+
+# <img src="docs/icon.svg" style="height: 1em; vertical-align: -0.15em; margin-right: 0.3em;" alt="tgtui icon: a speech bubble holding a prompt">tgtui
 
 An unofficial Telegram client for the terminal, built on the Telegram API with
 [TDLib](https://github.com/tdlib/td). Keyboard first, with Telegram Desktop's shortcuts and an
@@ -8,12 +8,10 @@ optional Vim-style normal mode.
 
 tgtui is not affiliated with or endorsed by Telegram.
 
-![Chat with the harvest theme](docs/screenshots/chat-harvest.png)
-
 | | |
 |---|---|
-| ![Finding chats, catppuccin-latte](docs/screenshots/find-catppuccin-latte.png) | ![Settings, catppuccin-mocha](docs/screenshots/settings-catppuccin-mocha.png) |
-| ![Normal mode, terminal theme](docs/screenshots/normal-terminal.png) | |
+| ![Chat with the harvest theme](docs/screenshots/chat-harvest.png) | ![Finding chats, catppuccin-latte](docs/screenshots/find-catppuccin-latte.png) |
+|  ![Settings, catppuccin-mocha](docs/screenshots/settings-catppuccin-mocha.png) | ![Normal mode, terminal theme](docs/screenshots/normal-terminal.png) |
 
 ## Features
 
