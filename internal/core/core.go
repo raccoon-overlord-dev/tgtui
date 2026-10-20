@@ -92,6 +92,7 @@ type Core struct {
 	mainPos    int
 	users      map[int64]string // display names, for message senders
 	usernames  map[int64]string
+	userPhotos map[int64]Photo
 	chats      map[int64]*Chat // values are replaced, never changed, so copies can share them
 	loaded     map[ChatList]bool
 	win        Window // the open chat
@@ -104,7 +105,7 @@ type Core struct {
 
 func New(td TD, p Params) *Core {
 	return &Core{td: td, params: p, changed: make(chan struct{}, 1), closed: make(chan struct{}),
-		users: map[int64]string{}, usernames: map[int64]string{}, chats: map[int64]*Chat{}, loaded: map[ChatList]bool{}, files: map[int32]File{}, scopeMute: map[ChatKind]int64{}, replies: map[[2]int64]*Message{}}
+		users: map[int64]string{}, usernames: map[int64]string{}, userPhotos: map[int64]Photo{}, chats: map[int64]*Chat{}, loaded: map[ChatList]bool{}, files: map[int32]File{}, scopeMute: map[ChatKind]int64{}, replies: map[[2]int64]*Message{}}
 }
 
 // Changed receives after the state changed. Bursts collapse into one receive.
@@ -146,6 +147,11 @@ func (c *Core) Apply(raw json.RawMessage) {
 			me := parseUser(u.User)
 			c.users[me.ID] = strings.TrimSpace(me.FirstName + " " + me.LastName)
 			c.usernames[me.ID] = me.Username
+			var p struct {
+				Photo *tdChatPhoto `json:"profile_photo"`
+			}
+			json.Unmarshal(u.User, &p)
+			c.userPhotos[me.ID] = c.photo(p.Photo)
 			if c.snap.Me != nil && c.snap.Me.ID == me.ID {
 				c.snap.Me = me
 			}
@@ -193,6 +199,7 @@ type update struct {
 	Chat             *tdChat         `json:"chat"`
 	ChatID           int64           `json:"chat_id"`
 	Title            string          `json:"title"`
+	Photo            *tdChatPhoto    `json:"photo"` // updateChatPhoto
 	Position         *tdPosition     `json:"position"`
 	Positions        []tdPosition    `json:"positions"`
 	LastMessage      *tdMessage      `json:"last_message"`

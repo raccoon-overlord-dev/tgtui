@@ -55,6 +55,16 @@ func (m *model) key(k tea.KeyPressMsg) tea.Cmd {
 	case m.pick != nil:
 		return m.pickerKey(k)
 	}
+	if m.rec != nil {
+		switch key {
+		case "ctrl+t", "enter":
+			return m.recordKey()
+		case "esc":
+			return m.stopRecording(false)
+		}
+		m.flash = "Recording: enter sends · esc cancels"
+		return nil
+	}
 	if cmd, ok := m.globalKey(key); ok {
 		return cmd
 	}
@@ -184,6 +194,11 @@ func (m *model) globalKey(key string) (tea.Cmd, bool) {
 			return nil, false
 		}
 		return m.attachPrompt(), true
+	case "ctrl+t":
+		if m.focus != focusChat {
+			return nil, false
+		}
+		return m.recordKey(), true
 	default:
 		if letter, ok := strings.CutPrefix(key, "alt+"); ok && m.focus == focusChat && len(letter) == 1 {
 			if letter == "v" {
@@ -283,7 +298,11 @@ func (m *model) plainListKey(k tea.KeyPressMsg) tea.Cmd {
 func (m *model) msgAction(key string) (tea.Cmd, bool) {
 	sel := m.selected()
 	switch key {
-	case "r", "e", "d", "f", "o", "s", "space":
+	case "<":
+		return m.seek(-5 * time.Second), true
+	case ">":
+		return m.seek(5 * time.Second), true
+	case "r", "e", "d", "f", "o", "s", "p", "space":
 	default:
 		return nil, false
 	}
@@ -308,6 +327,8 @@ func (m *model) msgAction(key string) (tea.Cmd, bool) {
 		return m.fileKey("open"), true
 	case "s":
 		return m.fileKey("save"), true
+	case "p":
+		return m.playKey(), true
 	case "space":
 		m.revealed[sel.ID] = !m.revealed[sel.ID]
 	}
@@ -509,7 +530,7 @@ func (m *model) editKey(k tea.KeyPressMsg) tea.Cmd {
 		// Telegram apps repeat "typing" every few seconds while it lasts; not for edits.
 		if v := m.comp.value(); v != before && v != "" && m.editID == 0 && time.Since(m.typedAt) > 5*time.Second {
 			m.typedAt = time.Now()
-			return run(m.c.SendTyping)
+			return run(func() error { return m.c.SendAction("chatActionTyping") })
 		}
 	}
 	return nil

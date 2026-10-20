@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -60,5 +61,13 @@ func TestIconColours(t *testing.T) {
 	setTheme("terminal", false, false) // ANSI only: harvest's colours
 	if iconBg != "#1c1612" || iconAccent != "#e8833a" {
 		t.Fatalf("terminal icon: %s %s", iconBg, iconAccent)
+	}
+}
+
+// docs/icon.svg, the README's icon, is the notification icon in harvest's colours.
+func TestIconFile(t *testing.T) {
+	b, err := os.ReadFile("../../docs/icon.svg")
+	if err != nil || string(b) != iconSVG("#1c1612", "#e8833a") {
+		t.Fatalf("docs/icon.svg is not iconSVG in harvest's colours (%v); rewrite it from iconSVG", err)
 	}
 }

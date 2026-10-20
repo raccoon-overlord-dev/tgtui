@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -283,5 +284,37 @@ func TestTyping(t *testing.T) {
 	act(7, "chatActionCancel")
 	if got := c.Chat(3).Typing; len(got) != 0 {
 		t.Fatalf("after cancel: %+v", got)
+	}
+}
+
+// Waveforms go through Telegram's 5-bit packing unchanged, and TDLib's base64 bytes decode.
+func TestWaveform(t *testing.T) {
+	vs := []byte{0, 31, 7, 16, 1, 30, 9, 22, 3}
+	if got := Unpack5(Pack5(vs))[:len(vs)]; string(got) != string(vs) {
+		t.Fatalf("round trip: %v", got)
+	}
+	c := New(&historyTD{}, Params{})
+	var m Message
+	c.setMedia(&m, json.RawMessage(`{"@type":"messageVoiceNote","voice_note":{"duration":3,"waveform":"`+
+		base64.StdEncoding.EncodeToString(Pack5(vs))+`","voice":{"id":5}}}`))
+	if m.Media == nil || m.Media.Duration != 3 || string(m.Media.Wave[:len(vs)]) != string(vs) {
+		t.Fatalf("voice note: %+v", m.Media)
+	}
+}
+
+// Profile pictures: chats carry theirs, users' come from updateUser, and both change.
+func TestPhotos(t *testing.T) {
+	c := New(&historyTD{}, Params{})
+	c.Apply(json.RawMessage(`{"@type":"updateNewChat","chat":{"id":-5,"title":"G","type":{"@type":"chatTypeBasicGroup"},"photo":{"small":{"id":11},"minithumbnail":{"data":"AAEC"}},"positions":[]}}`))
+	c.Apply(json.RawMessage(`{"@type":"updateUser","user":{"id":7,"first_name":"Jane","usernames":{},"profile_photo":{"small":{"id":12}}}}`))
+	if p := c.Chat(-5).Photo; p.File != 11 || len(p.Mini) != 3 {
+		t.Fatalf("chat photo: %+v", p)
+	}
+	if c.SenderPhoto(7).File != 12 || c.SenderPhoto(-5).File != 11 || c.SenderPhoto(8).File != 0 {
+		t.Fatal("sender photos")
+	}
+	c.Apply(json.RawMessage(`{"@type":"updateChatPhoto","chat_id":-5}`))
+	if c.Chat(-5).Photo.File != 0 {
+		t.Fatal("removed photo")
 	}
 }

@@ -9,6 +9,7 @@ api_hash = ""
 theme       = "terminal"   # terminal (its own colours) | catppuccin-mocha | catppuccin-latte | harvest | harvest-light
 background  = "theme"      # theme (designed themes paint their background) | terminal (keep the terminal's)
 time_format = "24h"        # 24h | 12h
+avatars     = true         # profile pictures (with kitty graphics; initials otherwise)
 
 [notifications]
 # Which messages notify is Telegram's choice (mute settings, exceptions, mentions).

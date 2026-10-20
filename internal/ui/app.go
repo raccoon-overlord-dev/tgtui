@@ -31,7 +31,9 @@ type Options struct {
 
 // Run starts the TUI and blocks until the user quits or the session closes.
 func Run(c *core.Core, o Options) error {
-	_, err := tea.NewProgram(newModel(c, o)).Run()
+	m := newModel(c, o)
+	defer m.stopAudio()
+	_, err := tea.NewProgram(m).Run()
 	return err
 }
 
@@ -61,9 +63,14 @@ type model struct {
 	notifyTo  string    // off | terminal | system
 	clock     string    // time.Format layout of times of day
 	kittyOK   bool      // the terminal answered the kitty graphics query
-	typedAt   time.Time // when "typing" was last sent
-	x256      bool      // a 256-colour terminal: themes use their x256 colours
-	theme     string    // the theme loaded, with the background setting: "harvest/theme"
+	play      *playback // the voice or audio message playing or paused
+	playGen   int
+	rec       *recording         // the voice note being recorded
+	avatars   map[avKey][]string // profile pictures drawn, kitty images among them sent
+	avatarDL  []int32            // pictures to download, found while drawing
+	typedAt   time.Time          // when "typing" was last sent
+	x256      bool               // a 256-colour terminal: themes use their x256 colours
+	theme     string             // the theme loaded, with the background setting: "harvest/theme"
 	themeX256 bool
 
 	spin      int    // spinner frame
@@ -117,7 +124,7 @@ type model struct {
 
 func newModel(c *core.Core, o Options) *model {
 	m := &model{c: c, o: o, cache: map[lineKey]rendered{}, revealed: map[int64]bool{}, comp: newInput(""),
-		pending: map[int32]string{}, requested: map[int32]bool{}}
+		pending: map[int32]string{}, requested: map[int32]bool{}, avatars: map[avKey][]string{}}
 	m.applyConfig()
 	return m
 }
@@ -132,7 +139,7 @@ func (m *model) applyConfig() {
 		images = termimg.Kitty
 	}
 	if images != m.images {
-		m.images, m.cache = images, map[lineKey]rendered{}
+		m.images, m.cache, m.avatars = images, map[lineKey]rendered{}, map[avKey][]string{}
 	}
 	m.notifyTo = notifyMode(cfg.Notifications.Mode)
 	clock := "15:04"
@@ -144,7 +151,7 @@ func (m *model) applyConfig() {
 	}
 	if th := cfg.Appearance.Theme + "/" + cfg.Appearance.Background; th != m.theme || m.x256 != m.themeX256 {
 		setTheme(cfg.Appearance.Theme, m.x256, cfg.Appearance.Background != "terminal")
-		m.theme, m.themeX256, m.cache = th, m.x256, map[lineKey]rendered{}
+		m.theme, m.themeX256, m.cache, m.avatars = th, m.x256, map[lineKey]rendered{}, map[avKey][]string{}
 	}
 }
 
@@ -199,6 +206,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		m.ticking = false
 		m.spin++
+		cmd = m.signalRecording()
+	case playEndMsg:
+		m.playEnded(msg)
+	case recordedMsg:
+		cmd = m.recorded(msg)
 	case clearFlashMsg:
 		if int(msg) == m.flashN {
 			m.flash = ""
@@ -211,7 +223,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case uv.CellSizeEvent:
 		if msg.Width > 0 && msg.Height > 0 {
 			termimg.CellW, termimg.CellH = msg.Width, msg.Height
-			m.cache = map[lineKey]rendered{}
+			m.cache, m.avatars = map[lineKey]rendered{}, map[avKey][]string{}
 		}
 	case updateMsg:
 		m.updated(msg)
@@ -315,7 +327,7 @@ func (m *model) busy() bool {
 	case m.snap.Auth.Kind != core.AuthReady:
 		return false
 	}
-	return m.win.Loading && m.open != 0 || m.pick != nil && m.pick.busy ||
+	return m.win.Loading && m.open != 0 || m.pick != nil && m.pick.busy || m.rec != nil || m.play != nil && m.play.cmd != nil ||
 		m.snap.Conn == "Connecting" || m.snap.Conn == "ConnectingToProxy" || m.snap.Conn == "Updating"
 }
 
@@ -383,7 +395,7 @@ func (m *model) enterChat(id int64, load func()) tea.Cmd {
 		m.win = core.Window{ChatID: id, Loading: true}
 		m.attach, m.pathIn, m.mention = nil, nil, nil
 		if m.images == termimg.Kitty {
-			m.sendQ = append(m.sendQ, termimg.DeleteAll())
+			m.sendQ, m.avatars = append(m.sendQ, termimg.DeleteAll()), map[avKey][]string{}
 		}
 	}
 	m.focus = focusChat
@@ -401,7 +413,7 @@ func (m *model) closeChat() tea.Cmd {
 	m.win, m.cache, m.focus = core.Window{}, map[lineKey]rendered{}, focusList
 	m.cur, m.replyTo, m.editID, m.attach, m.pathIn, m.mention = 0, 0, 0, nil, nil, nil
 	if m.images == termimg.Kitty {
-		m.sendQ = append(m.sendQ, termimg.DeleteAll())
+		m.sendQ, m.avatars = append(m.sendQ, termimg.DeleteAll()), map[avKey][]string{}
 	}
 	return func() tea.Msg { m.c.CloseChat(); return nil }
 }
@@ -439,17 +451,21 @@ func (m *model) step(d int) tea.Cmd {
 // after runs after every update: marks what's on screen as read, and loads more history
 // when the pane gets near the end of what is loaded.
 func (m *model) after() tea.Cmd {
+	var cmds []tea.Cmd
+	if m.snap.Auth.Kind == core.AuthReady && m.w > 0 {
+		cmds = m.warmAvatars()
+	}
 	if m.snap.Auth.Kind != core.AuthReady || m.open == 0 || m.win.ChatID != m.open || m.w == 0 || !m.chatShown() {
 		if len(m.sendQ) > 0 { // e.g. the kitty clean-up of the chat just left
 			q := strings.Join(m.sendQ, "")
 			m.sendQ = nil
-			return tea.Raw(q)
+			cmds = append(cmds, tea.Raw(q))
 		}
-		return nil
+		return tea.Batch(cmds...)
 	}
 	// Rendering here, before View, also queues the kitty images that View will place.
 	_, ids, top, bottom := m.messageRows()
-	cmds := m.mediaWork(ids)
+	cmds = append(cmds, m.mediaWork(ids)...)
 	if n := len(ids); n > 0 && ids[n-1] > m.viewedMax {
 		m.viewedMax = ids[n-1]
 		cmds = append(cmds, func() tea.Msg { m.c.Viewed(ids); return nil })

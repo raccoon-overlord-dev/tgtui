@@ -44,6 +44,7 @@ var settingRows = []setRow{
 	choice("Appearance", "Theme", themeNames, func(c *config.Config) *string { return &c.Appearance.Theme }),
 	choice("Appearance", "Background", []string{"theme", "terminal"}, func(c *config.Config) *string { return &c.Appearance.Background }),
 	choice("Appearance", "Time format", []string{"24h", "12h"}, func(c *config.Config) *string { return &c.Appearance.TimeFormat }),
+	onOff("Appearance", "Profile pictures", func(c *config.Config) *bool { return &c.Appearance.Avatars }),
 	choice("Appearance", "Images", []string{"auto", "kitty", "blocks", "off"}, func(c *config.Config) *string { return &c.Media.Images }),
 
 	choice("Files", "Attach with", []string{"dialog", "path"}, func(c *config.Config) *string { return &c.Media.Attach }),

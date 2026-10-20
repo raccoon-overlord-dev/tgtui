@@ -25,6 +25,7 @@ type lineKey struct {
 	sending, failed      bool
 	revealed             bool
 	img, file, prev      string // image source, file state, link preview
+	avatar               string // the sender's picture, as drawn
 }
 
 // rendered is a message's lines; lines[start:] are the message itself, after the day
@@ -116,7 +117,9 @@ func (m *model) replyBlock(msg core.Message, w int) (key, line string) {
 	return senderName(*r) + "\x00" + text, ansi.Truncate(line, w, "…")
 }
 
-// fileBlock is a message's file: ┃ file  name  size, and the download progress.
+// fileBlock is a message's file: ┃ file  name  size, and the download progress. A voice
+// note shows its waveform; one playing or paused starts with ▶ or ‖, its played part in
+// the accent, and the position before the length.
 func (m *model) fileBlock(msg core.Message) string {
 	md := msg.Media
 	if md == nil || md.File == 0 || !fileKinds[msg.Kind] {
@@ -124,7 +127,11 @@ func (m *model) fileBlock(msg core.Message) string {
 	}
 	f := m.c.File(md.File)
 	var meta []string
-	if md.Duration > 0 {
+	p := m.playing(msg.ID)
+	switch {
+	case p != nil:
+		meta = append(meta, duration(int(p.pos().Seconds()))+" / "+duration(md.Duration))
+	case md.Duration > 0:
 		meta = append(meta, duration(md.Duration))
 	}
 	if md.Size > 0 {
@@ -140,7 +147,21 @@ func (m *model) fileBlock(msg core.Message) string {
 	if md.Name != "" {
 		name = text.Render(md.Name)
 	}
-	return replyBar.Render("┃ ") + joinNonEmpty("  ", dim.Render(kinds[msg.Kind]), name, dim.Render(strings.Join(meta, " · ")))
+	if len(md.Wave) > 0 {
+		played := 0
+		if p != nil && md.Duration > 0 {
+			played = int(p.pos() * 24 / (time.Duration(md.Duration) * time.Second))
+		}
+		name = bars(md.Wave, 24, played)
+	}
+	kind := dim.Render(kinds[msg.Kind])
+	switch {
+	case p != nil && p.cmd != nil:
+		kind = accent.Render("▶ " + kinds[msg.Kind])
+	case p != nil:
+		kind = accent.Render("‖ " + kinds[msg.Kind])
+	}
+	return replyBar.Render("┃ ") + joinNonEmpty("  ", kind, name, dim.Render(strings.Join(meta, " · ")))
 }
 
 // previewBlock is a link preview: site, title, description, one line each.
@@ -196,8 +217,12 @@ func (m *model) msgLines(i, w int, ch *core.Chat) rendered {
 	if msg.Preview != nil {
 		prev = msg.Preview.Site + msg.Preview.Title + msg.Preview.Description
 	}
+	var av []string
+	if head && !own && !svc && ch != nil && ch.Kind == core.ChatGroup {
+		av = m.avatar(m.c.SenderPhoto(msg.SenderID), msg.SenderID, senderName(msg), 2, 1)
+	}
 	key := lineKey{msg.ID, msg.EditDate, msg.Text, replyKey, w, head, day, gap, ch != nil && msg.ID <= ch.ReadOutbox,
-		msg.Sending, msg.Failed, m.revealed[msg.ID], img, file, prev}
+		msg.Sending, msg.Failed, m.revealed[msg.ID], img, file, prev, strings.Join(av, "")}
 	if r, ok := m.cache[key]; ok {
 		return r
 	}
@@ -214,7 +239,11 @@ func (m *model) msgLines(i, w int, ch *core.Chat) rendered {
 		return m.store(key, rendered{out, start})
 	}
 	if head && !own {
-		out = append(out, pad(nameStyle(msg.SenderID).Render(senderName(msg))+"  "+dim.Render(t.Format(m.clock)), cw))
+		who := nameStyle(msg.SenderID).Render(senderName(msg)) + "  " + dim.Render(t.Format(m.clock))
+		if av != nil {
+			who = av[0] + " " + who
+		}
+		out = append(out, pad(who, cw))
 	}
 	var body []string
 	if reply != "" {
@@ -425,6 +454,9 @@ func (m *model) composerPane(w int) []string {
 	var head, bottom string
 	var inner []string
 	switch {
+	case m.rec != nil:
+		head = bad.Render("●") + " " + title.Render("Recording") + "  " + dim.Render(duration(int(time.Since(m.rec.started).Seconds())))
+		bottom = "enter send · esc cancel"
 	case m.editID != 0:
 		head, bottom = dim.Render("✎")+" "+title.Render("Editing"), "enter save · esc cancel"
 	case m.replyTo != 0:
@@ -523,9 +555,13 @@ func (m *model) chatPane(w, h int) []string {
 	ch := m.openChatInfo()
 	head := ""
 	if ch != nil {
-		head = title.Render(m.chatName(ch)) + "  " + dim.Render([]string{"private", "group", "channel"}[ch.Kind])
+		kind := dim.Render([]string{"private", "group", "channel"}[ch.Kind])
 		if typ := typingText(ch); typ != "" {
-			head = title.Render(m.chatName(ch)) + "  " + accent.Render(typ)
+			kind = accent.Render(typ)
+		}
+		head = title.Render(m.chatName(ch)) + "  " + kind
+		if av := m.chatAvatar(ch, 2, 1); av != nil {
+			head = av[0] + " " + head
 		}
 		if m.w < 70 {
 			head = dim.Render("‹ Chats") + "  " + title.Render(m.chatName(ch))

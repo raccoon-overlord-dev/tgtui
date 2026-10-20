@@ -125,8 +125,18 @@ func (m *model) chatRow(ch *core.Chat, iw int, sel, bar bool, list core.ChatList
 			preview = s.Render(typ)
 		}
 	}
+	var av []string
+	if iw >= 20 {
+		av = m.chatAvatar(ch, 4, 2)
+	}
+	if av != nil { // the picture, then the row's own padding column as the gap
+		iw -= 5
+	}
 	l1 := row(iw, fill, name.Render(ansi.Truncate(m.chatName(ch), max(iw-ansi.StringWidth(when)-1, 1), "…")), s.Render(when))
 	l2 := row(iw, fill, preview, strings.Join(badges, fill.Render(" ")))
+	if av != nil {
+		l1, l2 = fill.Render(" ")+av[0]+l1, fill.Render(" ")+av[1]+l2
+	}
 	if bar {
 		l1, l2 = accent.Render("▌")+l1[1:], accent.Render("▌")+l2[1:] // rows start with a plain space
 	}

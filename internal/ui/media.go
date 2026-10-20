@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -106,6 +108,14 @@ func (m *model) fileKey(act string) tea.Cmd {
 }
 
 func (m *model) fileAction(id int32, act string) tea.Cmd {
+	if s, ok := strings.CutPrefix(act, "play:"); ok {
+		msg, _ := strconv.ParseInt(s, 10, 64)
+		if i, ok := m.indexOf(msg); ok && m.play == nil {
+			md := m.win.Messages[i].Media
+			return m.startPlay(&playback{msg: msg, path: m.c.File(id).Path, dur: time.Duration(md.Duration) * time.Second})
+		}
+		return nil
+	}
 	if name, ok := strings.CutPrefix(act, "save:"); ok {
 		return func() tea.Msg {
 			p, err := m.c.SaveToDownloads(id, name)

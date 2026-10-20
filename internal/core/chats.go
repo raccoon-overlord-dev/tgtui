@@ -70,9 +70,48 @@ type Chat struct {
 	Muted        bool  // by its own setting or its kind's default
 	Last         *Message
 	Typing       []Typing // who is typing (or recording, sending…) now, oldest first
+	Photo        Photo
 	positions    []tdPosition
 	notify       tdNotifySettings
 	notifyRaw    json.RawMessage // all of TDLib's settings, to change only the mute
+}
+
+// Photo is a profile picture: the small (160 px) file, and the tiny inline JPEG to draw
+// until it is downloaded. Zero when there is none.
+type Photo struct {
+	File int32
+	Mini []byte
+}
+
+type tdChatPhoto struct { // chatPhotoInfo and profilePhoto
+	Small tdFile  `json:"small"`
+	Mini  *tdMini `json:"minithumbnail"`
+}
+
+// photo converts a TDLib photo, recording its file. Called with mu held.
+func (c *Core) photo(p *tdChatPhoto) Photo {
+	if p == nil || p.Small.ID == 0 {
+		return Photo{}
+	}
+	c.files[p.Small.ID] = fileOf(p.Small)
+	ph := Photo{File: p.Small.ID}
+	if p.Mini != nil {
+		ph.Mini = p.Mini.Data
+	}
+	return ph
+}
+
+// SenderPhoto is the picture of a message sender: a user, or a chat posting as itself.
+func (c *Core) SenderPhoto(id int64) Photo {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if p, ok := c.userPhotos[id]; ok {
+		return p
+	}
+	if ch := c.chats[id]; ch != nil {
+		return ch.Photo
+	}
+	return Photo{}
 }
 
 // Typing is a member's current action in a chat, as words: "typing", "recording a voice note".
@@ -108,6 +147,7 @@ type tdChat struct {
 		IsChannel bool   `json:"is_channel"`
 	} `json:"type"`
 	Title          string          `json:"title"`
+	Photo          *tdChatPhoto    `json:"photo"`
 	LastMessage    *tdMessage      `json:"last_message"`
 	Positions      []tdPosition    `json:"positions"`
 	Unread         int             `json:"unread_count"`
@@ -123,7 +163,7 @@ func (c *Core) applyChat(u *update) {
 	if u.Type == "updateNewChat" && u.Chat != nil {
 		t := u.Chat
 		ch := &Chat{ID: t.ID, Title: t.Title, Unread: t.Unread, Mentions: t.Mentions, MarkedUnread: t.MarkedUnread,
-			ReadInbox: t.LastReadInbox, ReadOutbox: t.LastReadOutbox, positions: t.Positions, notifyRaw: t.Notify}
+			ReadInbox: t.LastReadInbox, ReadOutbox: t.LastReadOutbox, positions: t.Positions, notifyRaw: t.Notify, Photo: c.photo(t.Photo)}
 		json.Unmarshal(t.Notify, &ch.notify)
 		switch {
 		case t.Type.Type == "chatTypeBasicGroup", t.Type.Type == "chatTypeSupergroup" && !t.Type.IsChannel:
@@ -146,6 +186,8 @@ func (c *Core) applyChat(u *update) {
 	switch u.Type {
 	case "updateChatTitle":
 		ch.Title = u.Title
+	case "updateChatPhoto":
+		ch.Photo = c.photo(u.Photo)
 	case "updateChatPosition":
 		ch.positions = slices.DeleteFunc(slices.Clone(ch.positions), func(p tdPosition) bool { return p.List == u.Position.List })
 		if u.Position.Order != 0 {

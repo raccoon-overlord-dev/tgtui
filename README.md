@@ -1,3 +1,5 @@
+<img src="docs/icon.svg" width="96" alt="tgtui icon: a speech bubble holding a prompt">
+
 # tgtui
 
 An unofficial Telegram client for the terminal, built on the Telegram API with
@@ -18,7 +20,12 @@ tgtui is not affiliated with or endorsed by Telegram.
 - Chat list with folders and the archive, private chats, groups and read-only channels
 - Formatted messages (bold, italic, code, links, spoilers, quotes), replies, edits, delete, forward
 - Photos and stickers inline (kitty graphics, or coloured half blocks in any terminal),
-  sending files and albums, opening and saving attachments
+  sending files and albums (picked in the system's file dialog or typed), opening and saving attachments
+- Voice messages: waveform, play / pause / seek, recording from the microphone (playing
+  needs `mpv` or `ffmpeg`, recording `ffmpeg`)
+- Profile pictures in the chat list, chat titles and group messages (initials without kitty
+  graphics; can be turned off)
+- Typing indicators, both ways
 - Search: chats and contacts, messages in all chats or in one chat, `@` mentions
 - Start a chat with a contact, an `@username` or a `+phone` number
 - Notifications through the terminal (kitty, Ghostty, iTerm2, WezTerm…) or the OS

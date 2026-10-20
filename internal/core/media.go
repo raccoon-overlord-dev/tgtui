@@ -29,7 +29,8 @@ type Media struct {
 	W, H     int    // the preview's size in pixels
 	Name     string
 	Size     int64
-	Duration int // seconds
+	Duration int    // seconds
+	Wave     []byte // a voice note's waveform: levels 0–31, oldest first
 }
 
 // LinkPreview is the card TDLib attaches to a text message with a link.
@@ -105,6 +106,7 @@ type tdContent struct {
 	} `json:"audio"`
 	VoiceNote *struct {
 		Duration int    `json:"duration"`
+		Waveform []byte `json:"waveform"`
 		File     tdFile `json:"voice"`
 	} `json:"voice_note"`
 	LinkPreview *struct {
@@ -193,6 +195,7 @@ func (c *Core) setMedia(m *Message, raw json.RawMessage) {
 		}
 	case ct.VoiceNote != nil:
 		md.File, md.Duration = file(ct.VoiceNote.File), ct.VoiceNote.Duration
+		md.Wave = Unpack5(ct.VoiceNote.Waveform)
 	default:
 		md = nil
 	}
@@ -269,6 +272,51 @@ func (c *Core) SaveToDownloads(id int32, name string) (string, error) {
 		return "", err
 	}
 	return dst, out.Close()
+}
+
+// Unpack5 reads Telegram's 5-bit waveform: values packed from the lowest bit of each byte.
+func Unpack5(b []byte) []byte {
+	out := make([]byte, len(b)*8/5)
+	for i := range out {
+		bit := i * 5
+		v := uint(b[bit/8])
+		if bit/8+1 < len(b) {
+			v |= uint(b[bit/8+1]) << 8
+		}
+		out[i] = byte(v >> (bit % 8) & 31)
+	}
+	return out
+}
+
+// Pack5 is Unpack5's inverse, for the waveform of a voice note being sent.
+func Pack5(vs []byte) []byte {
+	out := make([]byte, (len(vs)*5+7)/8)
+	for i, v := range vs {
+		bit := i * 5
+		w := uint(v&31) << (bit % 8)
+		out[bit/8] |= byte(w)
+		if w > 0xff {
+			out[bit/8+1] |= byte(w >> 8)
+		}
+	}
+	return out
+}
+
+// SendVoice sends a recorded voice note (OGG Opus) to the open chat, as a reply when
+// replyTo isn't 0. TDLib uploads it from path afterwards, so the file must stay.
+func (c *Core) SendVoice(path string, seconds int, wave []byte, replyTo int64) error {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	req := map[string]any{"@type": "sendMessage", "chat_id": c.openID(),
+		"input_message_content": map[string]any{"@type": "inputMessageVoiceNote", "voice_note": map[string]any{
+			"@type": "inputVoiceNote", "voice_note": map[string]any{"@type": "inputFileLocal", "path": abs},
+			"duration": seconds, "waveform": Pack5(wave)}}}
+	if replyTo != 0 {
+		req["reply_to"] = map[string]any{"@type": "inputMessageReplyToMessage", "message_id": replyTo}
+	}
+	return c.send(req)
 }
 
 // sendKind is how a local file is sent: photo, video, or as a file.

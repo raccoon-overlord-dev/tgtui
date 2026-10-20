@@ -2,9 +2,11 @@ package ui
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/color"
 	"image/jpeg"
 	"os"
 	"strings"
@@ -216,5 +218,35 @@ func TestNotifyRouting(t *testing.T) {
 	}
 	if s := oscNotify("a", "hi\x1b]evil"); strings.Count(s, "\x1b") != strings.Count(oscNotify("a", "b"), "\x1b") {
 		t.Fatalf("escape not stripped: %q", s)
+	}
+}
+
+// Profile pictures as kitty placeholders and as initials keep every frame w × h, and
+// the kitty images are sent before the frame that shows them.
+func TestAvatarsFit(t *testing.T) {
+	var png bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	img.Set(2, 2, color.RGBA{200, 80, 20, 255})
+	jpeg.Encode(&png, img, nil)
+	for _, kitty := range []bool{true, false} {
+		m := demo(120, 40)
+		m.c.Apply(json.RawMessage(`{"@type":"updateNewChat","chat":{"id":1,"title":"Group 🦊 chat","type":{"@type":"chatTypeBasicGroup"},"photo":{"small":{"id":77},"minithumbnail":{"data":"` +
+			base64.StdEncoding.EncodeToString(png.Bytes()) + `"}}}}`))
+		m.chats[0] = m.c.Chat(1)
+		if kitty {
+			m.images = termimg.Kitty
+		}
+		m.after()
+		if kitty && !strings.Contains(fmt.Sprint(m.avatars), "\U0010EEEE") {
+			t.Fatal("no kitty placeholders drawn")
+		}
+		for _, f := range []focus{focusChat, focusList} {
+			m.focus = f
+			for i, l := range strings.Split(m.View().Content, "\n") {
+				if w := ansi.StringWidth(l); w != 120 {
+					t.Fatalf("kitty %v: line %d is %d cells: %q", kitty, i, w, ansi.Strip(l))
+				}
+			}
+		}
 	}
 }

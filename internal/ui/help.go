@@ -15,10 +15,10 @@ var help = []struct {
 	{"APP", [][2]string{{",  F2", "settings"}, {":help  F1", "this screen"}, {"L  :logout", "log out"}, {"U  :install", "install an update"}, {"ctrl+l", "redraw"},
 		{":q  ctrl+q", "quit"}}},
 	{"MESSAGES · NORMAL", [][2]string{{"j k  ctrl+↑ ↓", "select a message"}, {"r  alt+r", "reply"}, {"e  alt+e", "edit"},
-		{"d  alt+d", "delete"}, {"f  alt+f", "forward"}, {"o  alt+o", "open media or link"}, {"s  alt+s", "save file"},
+		{"d  alt+d", "delete"}, {"f  alt+f", "forward"}, {"o  alt+o", "open media or link"}, {"s  alt+s", "save file"}, {"p  alt+p", "play / pause voice, audio"}, {"< >  alt+< >", "back / ahead 5 s"},
 		{"space  alt+v", "show spoilers"}, {"i", "type a message"}}},
 	{"COMPOSER · INSERT", [][2]string{{"enter", "send"}, {"alt+enter", "new line"}, {"↑", "edit last message (empty)"},
-		{"a  ctrl+o", "attach files"}, {"ctrl+x", "remove attached files"}, {"@name  tab", "mention"},
+		{"a  ctrl+o", "attach files"}, {"ctrl+t", "record a voice message"}, {"ctrl+x", "remove attached files"}, {"@name  tab", "mention"},
 		{"ctrl+b  ctrl+k", "bold · link"}, {"**b** __i__ `c`", "markup ~~s~~ ||spoiler||"}, {"esc", "back to NORMAL"}}},
 }
 
