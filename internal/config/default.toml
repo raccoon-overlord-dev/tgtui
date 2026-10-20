@@ -22,6 +22,9 @@ sound   = true   # ring the terminal bell (not for messages sent silently)
 # How pictures show: auto (asks the terminal) | kitty (kitty / Ghostty graphics, also in
 # tmux with `set -g allow-passthrough on`) | blocks (coloured half blocks, any terminal) | off
 images = "auto"
+# How to pick files to send: dialog (the system's file picker; zenity or kdialog on Linux)
+# | path (type the path in tgtui). Over ssh, or with no picker installed, it is always path.
+attach = "dialog"
 
 [keys]
 keymap  = "vim+telegram"   # vim+telegram (normal mode with letter keys) | telegram (no modes)

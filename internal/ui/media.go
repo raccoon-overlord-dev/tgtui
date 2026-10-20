@@ -130,6 +130,54 @@ func (m *model) fileAction(id int32, act string) tea.Cmd {
 	}
 }
 
+// fileDialog is the system's file picker, or nil where there is none (over ssh, no
+// desktop, no zenity / kdialog on Linux). Each prints the files chosen, one per line.
+func fileDialog() *exec.Cmd {
+	if os.Getenv("SSH_TTY") != "" {
+		return nil
+	}
+	if runtime.GOOS == "darwin" {
+		return exec.Command("osascript", "-e", `set out to ""`,
+			"-e", `repeat with f in (choose file with prompt "Attach files" with multiple selections allowed)`,
+			"-e", "set out to out & POSIX path of f & linefeed", "-e", "end repeat", "-e", "return out")
+	}
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		return nil
+	}
+	if p, err := exec.LookPath("zenity"); err == nil {
+		return exec.Command(p, "--file-selection", "--multiple", "--separator=\n", "--title=Attach files")
+	}
+	if p, err := exec.LookPath("kdialog"); err == nil {
+		home, _ := os.UserHomeDir()
+		return exec.Command(p, "--getopenfilename", home, "--multiple", "--separate-output", "--title", "Attach files")
+	}
+	return nil
+}
+
+type chosenMsg struct {
+	chat  int64
+	paths []string
+}
+
+// chooseFiles runs the file picker for chat; cancelling it (exit status 1) attaches nothing.
+func chooseFiles(chat int64, cmd *exec.Cmd) tea.Cmd {
+	return func() tea.Msg {
+		out, err := cmd.Output() // stdin is /dev/null: the picker never reads the TUI's input
+		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 1 {
+			return chosenMsg{chat: chat}
+		} else if err != nil {
+			return doneMsg{err}
+		}
+		var paths []string
+		for _, l := range strings.Split(string(out), "\n") {
+			if l = strings.TrimSpace(l); l != "" {
+				paths = append(paths, l)
+			}
+		}
+		return chosenMsg{chat, paths}
+	}
+}
+
 // pathKey edits the "attach file" prompt: tab completes, ↑ ↓ pick a completion, enter
 // adds the file (or opens the folder picked).
 func (m *model) pathKey(k tea.KeyPressMsg) tea.Cmd {

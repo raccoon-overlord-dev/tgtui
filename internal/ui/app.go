@@ -248,6 +248,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case flashMsg:
 		m.flash = string(msg)
+	case chosenMsg:
+		m.flash = ""
+		if msg.chat == m.open && len(msg.paths) > 0 {
+			m.attach, m.insert = append(m.attach, msg.paths...), true
+		}
 	case resultsMsg:
 		if p := m.pick; p == msg.p && msg.query == strings.TrimSpace(p.in.value()) {
 			p.items, p.query, p.busy, p.sel = msg.items, msg.query, false, 0

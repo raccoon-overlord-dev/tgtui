@@ -32,6 +32,7 @@ type Config struct {
 	} `toml:"notifications"`
 	Media struct {
 		Images string `toml:"images"` // auto | kitty | blocks | off
+		Attach string `toml:"attach"` // dialog | path: how files to send are picked
 	} `toml:"media"`
 	Keys struct {
 		Keymap string `toml:"keymap"`  // vim+telegram | telegram

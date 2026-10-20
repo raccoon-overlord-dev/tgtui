@@ -53,6 +53,7 @@ func keyMsg(k string) tea.KeyPressMsg {
 func legacyModel(t *testing.T, keymap string) *model {
 	m := demo(120, 40)
 	m.o.Config.Keys.Keymap = keymap
+	m.o.Config.Media.Attach = "path" // no file picker in tests
 	m.snap.Lists = []core.List{{ID: core.Main}, {ID: core.FolderList(1), Name: "Work"}}
 	m.snap.Me = &core.Me{ID: 42}
 	m.win.Messages[len(m.win.Messages)-1].Outgoing = true

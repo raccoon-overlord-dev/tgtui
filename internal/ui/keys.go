@@ -347,12 +347,18 @@ func (m *model) chatKey(key string) tea.Cmd {
 	return nil
 }
 
+// attachPrompt picks files to send: in the system's file picker, or by typing the path.
 func (m *model) attachPrompt() tea.Cmd {
-	if m.canWrite() {
-		in := newInput("~/")
-		m.pathIn, m.insert = &in, true
-		m.listPaths()
+	if !m.canWrite() {
+		return nil
 	}
+	if cmd := fileDialog(); cmd != nil && m.o.Config.Media.Attach != "path" {
+		m.flash = "Choosing files…"
+		return chooseFiles(m.open, cmd)
+	}
+	in := newInput("~/")
+	m.pathIn, m.insert = &in, true
+	m.listPaths()
 	return nil
 }
 

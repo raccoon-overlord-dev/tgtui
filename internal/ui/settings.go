@@ -46,6 +46,8 @@ var settingRows = []setRow{
 	choice("Appearance", "Time format", []string{"24h", "12h"}, func(c *config.Config) *string { return &c.Appearance.TimeFormat }),
 	choice("Appearance", "Images", []string{"auto", "kitty", "blocks", "off"}, func(c *config.Config) *string { return &c.Media.Images }),
 
+	choice("Files", "Attach with", []string{"dialog", "path"}, func(c *config.Config) *string { return &c.Media.Attach }),
+
 	choice("Notifications", "Notifications", []string{"auto", "terminal", "system", "off"}, func(c *config.Config) *string { return &c.Notifications.Mode }),
 	onOff("Notifications", "Message text", func(c *config.Config) *bool { return &c.Notifications.Preview }),
 	onOff("Notifications", "Sound (terminal bell)", func(c *config.Config) *bool { return &c.Notifications.Sound }),
