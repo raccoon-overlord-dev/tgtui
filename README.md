@@ -38,7 +38,8 @@ tgtui is not affiliated with or endorsed by Telegram.
 
 ## Install
 
-Linux (x86_64 and arm64): a single static binary that runs on any distribution.
+Linux (x86_64 and arm64): a single static binary that runs on any distribution. macOS 12 or
+later (Apple silicon and Intel): a binary that needs only the system's libraries.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/raccoon-overlord-dev/tgtui/main/install.sh | sh
@@ -55,9 +56,10 @@ To uninstall (it asks before deleting your settings and local session):
 curl -fsSL https://raw.githubusercontent.com/raccoon-overlord-dev/tgtui/main/install.sh | sh -s -- --uninstall
 ```
 
-You can also download `tgtui_linux_<arch>.tar.gz` from the
-[releases](https://github.com/raccoon-overlord-dev/tgtui/releases) yourself. macOS builds
-are coming.
+You can also download `tgtui_<os>_<arch>.tar.gz` from the
+[releases](https://github.com/raccoon-overlord-dev/tgtui/releases) yourself. On macOS a
+binary downloaded with a browser is quarantined: run `xattr -d com.apple.quarantine tgtui`
+before starting it (the install script doesn't need this).
 
 ## First run
 
@@ -102,12 +104,16 @@ encrypted with a key kept in the OS keychain when there is one), caches in
 
 ## Build from source
 
-TDLib is built inside Docker, so Docker is the only requirement:
+On Linux TDLib is built inside Docker, so Docker is the only requirement:
 
 ```sh
 make build    # ./tgtui, a static Linux binary (the first build compiles TDLib, ~30 min)
 make test     # go vet and go test (needs Go, not TDLib)
 ```
+
+On macOS `make build` builds natively. It needs Go, the Xcode command line tools and
+`brew install cmake gperf openssl@3 pkgconf`; TDLib is compiled once into
+`~/.cache/tgtui-build` (about 10 min on an M3) and OpenSSL is linked statically.
 
 `BUILD_JOBS` (default 3) sets TDLib's parallel compile jobs; each takes about 1.5 GB of RAM.
 
