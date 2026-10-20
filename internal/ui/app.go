@@ -5,6 +5,7 @@ package ui
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -581,22 +582,83 @@ func (m *model) hints() []string {
 		act := map[pickKind]string{pickForward: "enter send", pickContacts: "enter open chat", pickNew: "enter open chat",
 			pickChats: "enter open", pickPalette: "enter open", pickMessages: "enter jump", pickInChat: "enter jump", pickJump: "enter go"}[m.pick.kind]
 		return []string{"type to search", act, "esc close"}
+	case m.rec != nil:
+		return []string{"enter send", "esc cancel"}
 	case m.pathIn != nil:
 		return []string{"tab complete", "enter attach", "esc cancel"}
-	case m.focus == focusList && vim:
-		return []string{"j k move", "enter open", "1–9 folders", m.k("/") + " search", "n new chat", "m chat menu", m.k("?") + " keys", ", settings"}
 	case m.focus == focusList:
-		return []string{"↑ ↓ move", "enter open", "← → folders", "type to find", m.k("ctrl+\\") + " chat menu", "ctrl+n new chat", "> settings"}
-	case m.insert && m.cur != 0:
-		return []string{"alt+r reply", "alt+e edit", "alt+f forward", "alt+d delete", "alt+o open", "esc cancel"}
+		read := ""
+		if m.sel < len(m.chats) && (m.chats[m.sel].Unread > 0 || m.chats[m.sel].MarkedUnread) {
+			read = map[bool]string{true: "R mark read", false: "ctrl+r mark read"}[vim]
+		}
+		if vim {
+			return slices.DeleteFunc([]string{"j k move", "enter open", read, "1–9 folders", m.k("/") + " search", "n new chat", "m chat menu", m.k("?") + " keys", ", settings"}, isEmpty)
+		}
+		return slices.DeleteFunc([]string{"↑ ↓ move", "enter open", read, "← → folders", "type to find", m.k("ctrl+\\") + " chat menu", "ctrl+n new chat", "> settings"}, isEmpty)
+	case m.cur != 0 && m.selected() != nil:
+		return m.msgHints(*m.selected(), m.insert || !vim)
 	case m.insert:
-		return []string{"enter send", "alt+enter new line", "ctrl+↑ select", m.k("ctrl+\\") + " chat menu", "ctrl+o attach"}
+		return []string{"enter send", "alt+enter new line", "ctrl+↑ select", m.k("ctrl+\\") + " chat menu", "ctrl+o attach", "ctrl+t record"}
 	case !vim:
 		return []string{"↑ ↓ move", "alt+o open", "alt+s save", "alt+f forward", "esc chats"}
 	case !m.canWrite():
 		return []string{"j k move", "o open", "s save", "f forward", "esc chats"}
 	}
 	return []string{"j k move", "r reply", "f forward", "o open", "s save", "D delete", "i type", "esc chats"}
+}
+
+func isEmpty(s string) bool { return s == "" }
+
+// msgHints are the keys for the selected message, what it offers first: play a voice or
+// audio message, open a file or a link, show a spoiler; then reply, edit (own text),
+// forward, delete. alt: the alt+letter forms (while typing, or the telegram keymap).
+func (m *model) msgHints(sel core.Message, alt bool) []string {
+	key := func(k string) string {
+		if !alt {
+			return k
+		}
+		if a, ok := map[string]string{"D": "alt+d", "space": "alt+v"}[k]; ok {
+			return a
+		}
+		return "alt+" + k
+	}
+	var h []string
+	add := func(k, what string) { h = append(h, key(k)+" "+what) }
+	md := sel.Media
+	switch {
+	case md != nil && md.File != 0 && (sel.Kind == "VoiceNote" || sel.Kind == "Audio"):
+		p := m.playing(sel.ID)
+		add("p", map[bool]string{true: "pause", false: "play"}[p != nil && p.cmd != nil])
+		if p != nil {
+			h = append(h, key("<")+" "+key(">")+" seek")
+		}
+		add("s", "save")
+	case md != nil && md.File != 0:
+		add("o", "open")
+		add("s", "save")
+	case msgLink(sel) != "":
+		add("o", "open link")
+	}
+	if !m.revealed[sel.ID] && slices.ContainsFunc(sel.Spans, func(s core.Span) bool { return s.Format&core.Spoiler != 0 }) {
+		add("space", "show spoiler")
+	}
+	if m.canWrite() {
+		add("r", "reply")
+	}
+	if sel.Outgoing && sel.Kind == "Text" {
+		add("e", "edit")
+	}
+	add("f", "forward")
+	if m.canWrite() {
+		add("D", "delete")
+	}
+	if alt {
+		return append(h, "esc cancel")
+	}
+	if m.canWrite() {
+		h = append(h, "i type")
+	}
+	return append(h, "esc chats")
 }
 
 // state is the one system state the status line shows on the right, by priority.

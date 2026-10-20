@@ -50,6 +50,20 @@ func (m *model) drawImage(path string, data []byte, cols, rows int) []string {
 	return termimg.DrawBlocks(img, cols, rows)
 }
 
+// msgLink is the first web link of a message, or its link preview's: what o opens when
+// the message has no file.
+func msgLink(msg core.Message) string {
+	for _, s := range msg.Spans {
+		if s.Format&core.Link != 0 && s.URL != "" && !strings.HasPrefix(s.URL, "tg:") {
+			return s.URL
+		}
+	}
+	if msg.Preview != nil {
+		return msg.Preview.URL
+	}
+	return ""
+}
+
 func size(n int64) string {
 	switch {
 	case n >= 1<<20:
@@ -91,8 +105,13 @@ func (m *model) mediaWork(ids []int64) []tea.Cmd {
 // there, after downloading it otherwise.
 func (m *model) fileKey(act string) tea.Cmd {
 	sel := m.selected()
+	if sel != nil && act == "open" && (sel.Media == nil || sel.Media.File == 0) {
+		if u := msgLink(*sel); u != "" {
+			return openWith(u)
+		}
+	}
 	if sel == nil || sel.Media == nil || sel.Media.File == 0 {
-		m.flash = "✕ No file in this message"
+		m.flash = "✕ No file or link in this message"
 		return nil
 	}
 	id := sel.Media.File
@@ -125,13 +144,17 @@ func (m *model) fileAction(id int32, act string) tea.Cmd {
 			return flashMsg("✓ Saved to " + p)
 		}
 	}
-	path := m.c.File(id).Path
+	return openWith(m.c.File(id).Path)
+}
+
+// openWith hands a file or a URL to the system: open on macOS, xdg-open elsewhere.
+func openWith(target string) tea.Cmd {
 	return func() tea.Msg {
 		opener := "xdg-open"
 		if runtime.GOOS == "darwin" {
 			opener = "open"
 		}
-		cmd := exec.Command(opener, path) // stdout / stderr: /dev/null, not over the TUI
+		cmd := exec.Command(opener, target) // stdout / stderr: /dev/null, not over the TUI
 		if err := cmd.Start(); err != nil {
 			return doneMsg{err}
 		}

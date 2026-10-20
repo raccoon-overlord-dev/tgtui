@@ -281,3 +281,30 @@ func TestChatLetterKeys(t *testing.T) {
 		t.Fatal("ctrl+k in a chat should search the chat")
 	}
 }
+
+// The status-line hints follow the selected message: what it offers comes first, in the
+// keymap's form.
+func TestContextHints(t *testing.T) {
+	msgs := map[string]core.Message{
+		"p play":             {ID: 9001, Kind: "VoiceNote", Media: &core.Media{File: 3, Duration: 4}},
+		"o open":             {ID: 9002, Kind: "Photo", Media: &core.Media{File: 4}},
+		"o open link":        {ID: 9003, Kind: "Text", Text: "see x.org", Spans: []core.Span{{From: 4, To: 9, Format: core.Link, URL: "https://x.org"}}},
+		"space show spoiler": {ID: 9004, Kind: "Text", Text: "secret", Spans: []core.Span{{From: 0, To: 6, Format: core.Spoiler}}},
+	}
+	for want, msg := range msgs {
+		for _, keymap := range []string{"default", "telegram"} {
+			m := legacyModel(t, keymap)
+			msg.ChatID = 1
+			m.win.Messages = append(m.win.Messages, msg)
+			m.cur, m.insert = msg.ID, keymap == "telegram"
+			got := m.hints()
+			exp := want
+			if keymap == "telegram" {
+				exp = "alt+" + strings.Replace(want, "space ", "v ", 1)
+			}
+			if len(got) == 0 || got[0] != exp {
+				t.Errorf("%s, %s: hints %q, want %q first", keymap, msg.Kind, got, exp)
+			}
+		}
+	}
+}
