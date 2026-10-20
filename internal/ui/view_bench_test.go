@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -270,5 +271,28 @@ func TestAvatarsSentBeforeFrame(t *testing.T) {
 		if len(m.sendQ) > 0 {
 			t.Fatalf("row %d: %d transmissions queued while drawing, sent only on the next update", m.sel, len(m.sendQ))
 		}
+	}
+}
+
+// A picture whose download failed or stalled is asked for again, also while idle.
+func TestAvatarRetry(t *testing.T) {
+	m := demo(120, 40)
+	m.images = termimg.Kitty
+	c := *m.chats[0]
+	c.Photo = core.Photo{File: 55}
+	m.chats[0] = &c
+	m.focus = focusList
+	if cmds := m.warmAvatars(); len(cmds) != 1 || !m.avWaiting {
+		t.Fatalf("first request: %d downloads, waiting %v", len(cmds), m.avWaiting)
+	}
+	if cmds := m.warmAvatars(); len(cmds) != 0 {
+		t.Fatal("asked again at once")
+	}
+	m.avTried[55] = time.Now().Add(-11 * time.Second)
+	if cmds := m.warmAvatars(); len(cmds) != 1 {
+		t.Fatal("not asked again after 10 s")
+	}
+	if m.timers() == nil || !m.avTick {
+		t.Fatal("no retry tick while a picture is missing")
 	}
 }

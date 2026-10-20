@@ -66,16 +66,19 @@ type model struct {
 	kittyOK    bool      // the terminal answered the kitty graphics query
 	play       *playback // the voice or audio message playing or paused
 	playGen    int
-	rec        *recording         // the voice note being recorded
-	avatars    map[avKey][]string // profile pictures drawn, kitty images among them sent
-	termDark   *bool              // the terminal's background is dark; nil until it answers
-	themeUsed  string             // the theme in use: the setting's, or its light / dark pair
-	checked    string             // the last update check's result, for Settings
-	loadedTabs bool               // every folder was asked for its chats, for the tab counts
-	avatarDL   []int32            // pictures to download, found while drawing
-	typedAt    time.Time          // when "typing" was last sent
-	x256       bool               // a 256-colour terminal: themes use their x256 colours
-	theme      string             // the theme loaded, with the background setting: "harvest/theme"
+	rec        *recording          // the voice note being recorded
+	avatars    map[avKey][]string  // profile pictures drawn, kitty images among them sent
+	termDark   *bool               // the terminal's background is dark; nil until it answers
+	themeUsed  string              // the theme in use: the setting's, or its light / dark pair
+	checked    string              // the last update check's result, for Settings
+	loadedTabs bool                // every folder was asked for its chats, for the tab counts
+	avatarDL   []int32             // pictures to download, found while drawing
+	avTried    map[int32]time.Time // when each picture was last asked for
+	avWaiting  bool                // a picture on screen is still downloading
+	avTick     bool                // a retry tick is on its way
+	typedAt    time.Time           // when "typing" was last sent
+	x256       bool                // a 256-colour terminal: themes use their x256 colours
+	theme      string              // the theme loaded, with the background setting: "harvest/theme"
 	themeX256  bool
 
 	spin      int    // spinner frame
@@ -128,7 +131,7 @@ type model struct {
 
 func newModel(c *core.Core, o Options) *model {
 	m := &model{c: c, o: o, cache: map[lineKey]rendered{}, revealed: map[int64]bool{}, comp: newInput(""),
-		pending: map[int32]string{}, requested: map[int32]bool{}, avatars: map[avKey][]string{}}
+		pending: map[int32]string{}, requested: map[int32]bool{}, avatars: map[avKey][]string{}, avTried: map[int32]time.Time{}}
 	m.applyConfig()
 	return m
 }
@@ -170,6 +173,7 @@ const kittyQuery = "\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\"
 
 type (
 	tickMsg       struct{}
+	avTickMsg     struct{}
 	clearFlashMsg int
 	changedMsg    struct{}
 	doneMsg       struct{ err error }
@@ -215,6 +219,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ticking = false
 		m.spin++
 		cmd = m.signalRecording()
+	case avTickMsg:
+		m.avTick = false
 	case playEndMsg:
 		m.playEnded(msg)
 	case recordedMsg:
@@ -327,6 +333,10 @@ func (m *model) timers() tea.Cmd {
 	if m.busy() && !m.ticking {
 		m.ticking = true
 		cmds = append(cmds, tea.Tick(100*time.Millisecond, func(time.Time) tea.Msg { return tickMsg{} }))
+	}
+	if m.avWaiting && !m.avTick { // look again at pictures still downloading, even when idle
+		m.avTick = true
+		cmds = append(cmds, tea.Tick(5*time.Second, func(time.Time) tea.Msg { return avTickMsg{} }))
 	}
 	if m.flash != m.flashSeen {
 		m.flashSeen = m.flash

@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
@@ -34,9 +35,14 @@ func (m *model) avatar(ph core.Photo, id int64, name string, cols, rows int) []s
 		if ph.File != 0 {
 			if f := m.c.File(ph.File); f.Done {
 				path, data, src = f.Path, nil, fmt.Sprint("f", ph.File)
-			} else if !m.requested[ph.File] {
-				m.requested[ph.File] = true
-				m.avatarDL = append(m.avatarDL, ph.File)
+			} else {
+				// Asked again while it isn't downloading: a request can fail or stall, and
+				// the initials would otherwise stay until a restart.
+				m.avWaiting = true
+				if t, ok := m.avTried[ph.File]; !ok || !f.Downloading && time.Since(t) > 10*time.Second {
+					m.avTried[ph.File] = time.Now()
+					m.avatarDL = append(m.avatarDL, ph.File)
+				}
 			}
 		}
 		if path != "" || len(data) > 0 {
@@ -88,6 +94,7 @@ func initials(name string, id int64, cols, rows int) []string {
 // queued while drawing and must be written ahead of the frame. It returns the downloads
 // of pictures not on disk yet.
 func (m *model) warmAvatars() []tea.Cmd {
+	m.avWaiting = false
 	if m.o.Config.Appearance.Avatars && m.images == termimg.Kitty {
 		m.scrollList() // as listPane will
 		for i := m.listTop; i < min(m.listTop+m.listRows(), len(m.chats)); i++ {
@@ -99,7 +106,7 @@ func (m *model) warmAvatars() []tea.Cmd {
 	}
 	var cmds []tea.Cmd
 	for _, id := range m.avatarDL {
-		cmds = append(cmds, run(func() error { return m.c.Download(id, 1) }))
+		cmds = append(cmds, func() tea.Msg { m.c.Download(id, 1); return nil }) // a failure is retried, quietly
 	}
 	m.avatarDL = nil
 	return cmds
