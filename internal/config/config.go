@@ -36,7 +36,7 @@ type Config struct {
 		Attach string `toml:"attach"` // dialog | path: how files to send are picked
 	} `toml:"media"`
 	Keys struct {
-		Keymap string `toml:"keymap"`  // vim+telegram | telegram
+		Keymap string `toml:"keymap"`  // default | telegram (vim+telegram: default's old name)
 		OpenIn string `toml:"open_in"` // insert | normal: the mode a chat opens in
 		Layout string `toml:"layout"`  // us | it: which keys the punctuation shortcuts use
 	} `toml:"keys"`
@@ -94,6 +94,9 @@ func Load() (*Config, error) {
 			return c, err
 		}
 		return c, os.WriteFile(Path, []byte(defaultTOML), 0o600)
+	}
+	if c.Keys.Keymap == "vim+telegram" {
+		c.Keys.Keymap = "default"
 	}
 	return c, err
 }

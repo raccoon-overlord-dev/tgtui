@@ -1,21 +1,21 @@
 package ui
 
-// help lists the keys in groups, Vim and Telegram Desktop forms side by side. The first
+// help lists the keys in groups, the letter keys and Telegram Desktop's side by side. The first
 // four groups make the left column on wide terminals.
 var help = []struct {
 	name string
 	keys [][2]string
 }{
-	{"CHATS", [][2]string{{"j k  ↑ ↓", "move in the list"}, {"J K  alt+↑ ↓", "previous / next chat"}, {"enter", "open chat"}, {"esc", "close it (in the list)"},
+	{"CHATS", [][2]string{{"j k  ↑ ↓", "move in the list"}, {"g G", "top / bottom"}, {"J K  alt+↑ ↓", "previous / next chat"}, {"enter", "open chat"}, {"esc", "close it (in the list)"},
 		{"b", "back to the previous chat"}, {"m  ctrl+\\", "chat menu"}, {"R  ctrl+r", "mark as read"}}},
-	{"FOLDERS", [][2]string{{"1–9  ctrl+1–8", "go to folder"}, {"[ ]  ctrl+⇧+↑ ↓", "previous / next folder"}, {"g a  ctrl+9", "archive"},
-		{"g s  ctrl+0", "Saved Messages"}, {"g c", "contacts"}}},
-	{"SEARCH", [][2]string{{"/", "find chats and contacts"}, {"?  ctrl+f", "search messages"}, {"g n  ctrl+n", "new chat: @user, +phone"},
+	{"FOLDERS", [][2]string{{"1–9  ctrl+1–8", "go to folder"}, {"[ ]  ctrl+⇧+↑ ↓", "previous / next folder"}, {"@", "go to a folder, archive, Saved"},
+		{"ctrl+9", "archive"}, {"ctrl+0", "Saved Messages"}}},
+	{"SEARCH", [][2]string{{"/  ctrl+k", "chats, contacts, messages"}, {"/  ctrl+f", "in the open chat"}, {"n  ctrl+n", "new chat: @user, +phone"},
 		{":  :>", "find chats · settings, commands"}}},
-	{"APP", [][2]string{{",  F2", "settings"}, {":help  F1", "this screen"}, {"L  :logout", "log out"}, {"U  :install", "install an update"}, {"ctrl+l", "redraw"},
-		{":q  ctrl+q", "quit"}}},
+	{"APP", [][2]string{{",  F2", "settings"}, {"?  F1", "this screen"}, {"L  :logout", "log out"}, {"U  :install", "install an update"}, {"ctrl+l", "redraw"},
+		{"q  ctrl+q", "quit (q: from the list)"}}},
 	{"MESSAGES · NORMAL", [][2]string{{"j k  ctrl+↑ ↓", "select a message"}, {"r  alt+r", "reply"}, {"e  alt+e", "edit"},
-		{"d  alt+d", "delete"}, {"f  alt+f", "forward"}, {"o  alt+o", "open media or link"}, {"s  alt+s", "save file"}, {"p  alt+p", "play / pause voice, audio"}, {"< >  alt+< >", "back / ahead 5 s"},
+		{"D  alt+d", "delete"}, {"f  alt+f", "forward"}, {"o  alt+o", "open media or link"}, {"s  alt+s", "save file"}, {"p  alt+p", "play / pause voice, audio"}, {"< >  alt+< >", "back / ahead 5 s"},
 		{"space  alt+v", "show spoilers"}, {"i", "type a message"}}},
 	{"COMPOSER · INSERT", [][2]string{{"enter", "send"}, {"alt+enter", "new line"}, {"↑", "edit last message (empty)"},
 		{"a  ctrl+o", "attach files"}, {"ctrl+t", "record a voice message"}, {"ctrl+x", "remove attached files"}, {"@name  tab", "mention"},

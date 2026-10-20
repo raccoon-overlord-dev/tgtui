@@ -29,8 +29,8 @@ tgtui is not affiliated with or endorsed by Telegram.
 - Search: chats and contacts, messages in all chats or in one chat, `@` mentions
 - Start a chat with a contact, an `@username` or a `+phone` number
 - Notifications through the terminal (kitty, Ghostty, iTerm2, WezTerm…) or the OS
-- Two keymaps: `vim+telegram` (normal mode with letter keys) and `telegram` (no modes),
-  US and Italian keyboard layouts
+- Two keymaps: `default` (letter keys, the same as [ticktick-tui](https://github.com/raccoon-overlord-dev/ticktick-tui)'s
+  where both apps have the action) and `telegram` (no letter keys), US and Italian keyboard layouts
 - Themes: `terminal` (your terminal's colours), `catppuccin-mocha`, `catppuccin-latte`,
   `harvest`, `harvest-light`
 - Fast: the chat list comes from TDLib's local database before the network answers
@@ -69,23 +69,25 @@ Release builds include tgtui's API credentials. To use your own, get an `api_id`
 
 ## Keys
 
-`F1` shows every key. The most used ones:
+`?` (`F1` in the telegram keymap) shows every key. The most used ones:
 
-| | vim+telegram | telegram |
+| | default | telegram |
 |---|---|---|
-| Move in the list, open a chat | `j` `k`, `enter` | `↑` `↓`, `enter` |
+| Move in the list, open a chat | `j` `k`, `g` `G`, `enter` | `↑` `↓`, `enter` |
 | Next / previous chat | `J` `K`, `alt+↑` `alt+↓` | `alt+↑` `alt+↓` |
-| Folders | `1`–`9`, `[` `]` | `←` `→`, `ctrl+shift+↑` `↓` |
-| Find a chat | `/` | type in the list |
-| Search messages | `?`, `ctrl+f` | `ctrl+f` |
-| New chat | `g n`, `ctrl+n` | `ctrl+n` |
+| Folders | `1`–`9`, `[` `]`, `@` | `←` `→`, `ctrl+shift+↑` `↓` |
+| Search chats, contacts and messages | `/`, `ctrl+k` | type in the list |
+| Search in the open chat | `/` (after `esc`), `ctrl+f` | `ctrl+f` |
+| New chat | `n`, `ctrl+n` | `ctrl+n` |
 | Settings | `,`, `F2`, `:` then `>` | `F2`, `>` in the list |
 | Select a message | `esc` then `j` `k` | `ctrl+↑` `ctrl+↓` |
-| Reply, edit, delete, forward | `r` `e` `d` `f` | `alt+r` `alt+e` `alt+d` `alt+f` |
+| Reply, edit, delete, forward | `r` `e` `D` `f` | `alt+r` `alt+e` `alt+d` `alt+f` |
 | Open / save a file | `o` `s` | `alt+o` `alt+s` |
+| Play / pause, seek a voice message | `p`, `<` `>` | `alt+p`, `alt+<` `alt+>` |
+| Record a voice message | `ctrl+t` | `ctrl+t` |
 | Attach files | `a`, `ctrl+o`, or paste / drop them | `ctrl+o` |
 | Chat menu (mute, pin, archive) | `m`, `ctrl+\` | `ctrl+\`, `F3` |
-| Quit | `:q`, `ctrl+q` | `ctrl+q` |
+| Quit | `q` in the list, `ctrl+q` | `ctrl+q` |
 
 Messages use Telegram's markup: `**bold**`, `__italic__`, `~~strike~~`, `||spoiler||`,
 `` `code` ``, `[text](url)`. `alt+enter` starts a new line.

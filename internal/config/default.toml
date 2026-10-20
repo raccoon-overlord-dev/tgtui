@@ -28,8 +28,8 @@ images = "auto"
 attach = "dialog"
 
 [keys]
-keymap  = "vim+telegram"   # vim+telegram (normal mode with letter keys) | telegram (no modes)
-open_in = "insert"         # insert | normal: the mode a chat opens in (vim+telegram)
+keymap  = "default"   # default (letter keys, as in ticktick-tui; esc in a chat for its messages) | telegram (no letter keys)
+open_in = "insert"    # insert | normal: the mode a chat opens in (default keymap)
 layout  = "us"             # us | it: Italian ISO keys for [ ] / ? ctrl+\ (è + - _ ctrl+ù); f3 works on both
 
 [updates]

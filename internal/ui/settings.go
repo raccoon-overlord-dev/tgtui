@@ -54,7 +54,7 @@ var settingRows = []setRow{
 	onOff("Notifications", "Sound (terminal bell)", func(c *config.Config) *bool { return &c.Notifications.Sound }),
 	{section: "Notifications", label: "Send a test notification", act: (*model).testNotify},
 
-	choice("Keys", "Keymap", []string{"vim+telegram", "telegram"}, func(c *config.Config) *string { return &c.Keys.Keymap }),
+	choice("Keys", "Keymap", []string{"default", "telegram"}, func(c *config.Config) *string { return &c.Keys.Keymap }),
 	choice("Keys", "Keyboard layout", []string{"us", "it"}, func(c *config.Config) *string { return &c.Keys.Layout }),
 	choice("Keys", "Chats open in", []string{"insert", "normal"}, func(c *config.Config) *string { return &c.Keys.OpenIn }),
 

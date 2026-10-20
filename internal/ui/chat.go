@@ -538,7 +538,7 @@ func (m *model) chatPane(w, h int) []string {
 	if m.open == 0 {
 		inner := make([]string, h-2)
 		y := max(h/2-3, 0)
-		find := m.k("/") + " find a chat · g s Saved Messages · g c contacts"
+		find := m.k("/") + " search · @ folders and Saved Messages · n new chat"
 		if !m.vim() {
 			find = "type to find a chat · ctrl+0 Saved Messages"
 		}

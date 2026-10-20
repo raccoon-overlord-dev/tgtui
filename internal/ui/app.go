@@ -117,7 +117,6 @@ type model struct {
 	pathItems  []string // the attach prompt's completions
 	pathSel    int      // the selected one, -1 for none
 	newVersion string   // a newer release, "" when none
-	pendingG   bool     // g pressed, waiting for the second key (gg, gs, ga)
 	askLogout  bool
 	flash      string
 }
@@ -580,12 +579,12 @@ func (m *model) hints() []string {
 		return []string{"y log out", "n cancel"}
 	case m.pick != nil:
 		act := map[pickKind]string{pickForward: "enter send", pickContacts: "enter open chat", pickNew: "enter open chat",
-			pickChats: "enter open", pickPalette: "enter open", pickMessages: "enter jump", pickInChat: "enter jump"}[m.pick.kind]
+			pickChats: "enter open", pickPalette: "enter open", pickMessages: "enter jump", pickInChat: "enter jump", pickJump: "enter go"}[m.pick.kind]
 		return []string{"type to search", act, "esc close"}
 	case m.pathIn != nil:
 		return []string{"tab complete", "enter attach", "esc cancel"}
 	case m.focus == focusList && vim:
-		return []string{"j k move", "enter open", "1–9 folders", m.k("/") + " find", "m chat menu", "g n new chat", ": > settings"}
+		return []string{"j k move", "enter open", "1–9 folders", m.k("/") + " search", "n new chat", "m chat menu", m.k("?") + " keys", ", settings"}
 	case m.focus == focusList:
 		return []string{"↑ ↓ move", "enter open", "← → folders", "type to find", m.k("ctrl+\\") + " chat menu", "ctrl+n new chat", "> settings"}
 	case m.insert && m.cur != 0:
@@ -597,7 +596,7 @@ func (m *model) hints() []string {
 	case !m.canWrite():
 		return []string{"j k move", "o open", "s save", "f forward", "esc chats"}
 	}
-	return []string{"j k move", "r reply", "f forward", "o open", "s save", "d delete", "i type", "esc chats"}
+	return []string{"j k move", "r reply", "f forward", "o open", "s save", "D delete", "i type", "esc chats"}
 }
 
 // state is the one system state the status line shows on the right, by priority.

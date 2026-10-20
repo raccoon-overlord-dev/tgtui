@@ -9,11 +9,13 @@ import (
 	"github.com/raccoon-overlord-dev/tgtui/internal/core"
 )
 
-// Two keymaps (Settings → Keys). vim+telegram: Telegram Desktop's shortcuts, plus a Vim-like
-// normal mode with letter keys in the chat list and in chats (esc). telegram: no modes; a
-// chat's composer always has the keys, and messages are picked with ctrl+↑/↓ and acted on
-// with alt+letter, which also works while typing in vim+telegram. Every action has a key
-// that legacy terminals deliver (ANALYSIS.md §5).
+// Two keymaps (Settings → Keys). default: letter keys in the chat list and, after esc, on
+// a chat's messages, the same as ticktick-tui's where both apps have the action (? help,
+// , settings, / search, g G top and bottom, n new, D delete, q quit), plus Telegram
+// Desktop's shortcuts. telegram: no letter keys; typing in the list searches, a chat's
+// composer always has the keys, and messages are picked with ctrl+↑/↓ and acted on with
+// alt+letter, which also works while typing in default. Every action has a key that
+// legacy terminals deliver (ANALYSIS.md §5).
 
 func (m *model) vim() bool { return m.o.Config.Keys.Keymap != "telegram" }
 
@@ -80,29 +82,13 @@ func (m *model) key(k tea.KeyPressMsg) tea.Cmd {
 		}
 		return m.chatKey(key) // a channel: scroll, esc
 	}
-	if m.pendingG {
-		m.pendingG = false
-		switch key {
-		case "g":
-			if m.focus == focusList {
-				m.selectRow(0)
-			} else {
-				m.scroll(1 << 20)
-			}
-		case "s":
-			return m.saved()
-		case "a":
-			return m.setTab(len(m.tabs()) - 1)
-		case "c":
-			return m.openPicker(pickContacts, nil)
-		case "n":
-			return m.openPicker(pickNew, nil)
-		}
-		return nil
-	}
 	switch key {
 	case "g":
-		m.pendingG = true
+		if m.focus == focusList {
+			m.selectRow(0)
+		} else {
+			m.scroll(1 << 20)
+		}
 		return nil
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
 		return m.setTab(int(key[0] - '1'))
@@ -110,10 +96,18 @@ func (m *model) key(k tea.KeyPressMsg) tea.Cmd {
 		return m.setTab(m.tab + 1)
 	case "[":
 		return m.setTab(m.tab - 1)
-	case "/":
+	case "/", "ctrl+k":
+		if m.focus == focusChat {
+			return m.openPicker(pickInChat, nil)
+		}
 		return m.openPicker(pickChats, nil)
 	case "?":
-		return m.openPicker(pickMessages, nil)
+		m.help, m.helpTop = true, 0
+		return nil
+	case "@":
+		return m.openPicker(pickJump, nil)
+	case "n":
+		return m.openPicker(pickNew, nil)
 	case "J":
 		return m.step(1)
 	case "K":
@@ -201,8 +195,11 @@ func (m *model) globalKey(key string) (tea.Cmd, bool) {
 		return m.recordKey(), true
 	default:
 		if letter, ok := strings.CutPrefix(key, "alt+"); ok && m.focus == focusChat && len(letter) == 1 {
-			if letter == "v" {
+			switch letter {
+			case "v":
 				letter = "space"
+			case "d":
+				letter = "D"
 			}
 			return m.msgAction(letter)
 		}
@@ -250,6 +247,8 @@ func (m *model) listKey(key string) tea.Cmd {
 		}
 	case "esc": // as in Telegram: esc in the list closes the open chat
 		return m.closeChat()
+	case "q":
+		return tea.Quit
 	}
 	return nil
 }
@@ -265,6 +264,8 @@ func (m *model) plainListKey(k tea.KeyPressMsg) tea.Cmd {
 	case "j", "k", "l", "G", "ctrl+d", "ctrl+u":
 	case "esc":
 		return m.listKey(key)
+	case "ctrl+k":
+		return m.openPicker(pickChats, nil)
 	default:
 		if k.Text != "" && !strings.Contains(key, "+") && key != "space" {
 			kind := pickChats
@@ -302,7 +303,11 @@ func (m *model) msgAction(key string) (tea.Cmd, bool) {
 		return m.seek(-5 * time.Second), true
 	case ">":
 		return m.seek(5 * time.Second), true
-	case "r", "e", "d", "f", "o", "s", "p", "space":
+	case "delete":
+		key = "D"
+	}
+	switch key {
+	case "r", "e", "D", "f", "o", "s", "p", "space":
 	default:
 		return nil, false
 	}
@@ -316,7 +321,7 @@ func (m *model) msgAction(key string) (tea.Cmd, bool) {
 		m.replyTo, m.editID = sel.ID, 0
 	case "e":
 		return m.edit(sel), true
-	case "d":
+	case "D":
 		id := sel.ID
 		m.replyTo = 0
 		return func() tea.Msg { p, err := m.c.Properties(id); return propsMsg{id, p, err} }, true

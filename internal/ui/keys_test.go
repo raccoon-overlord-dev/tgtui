@@ -25,7 +25,7 @@ func press(m *model, keys ...string) tea.Cmd {
 func keyMsg(k string) tea.KeyPressMsg {
 	named := map[string]rune{"enter": tea.KeyEnter, "esc": tea.KeyEscape, "tab": tea.KeyTab, "up": tea.KeyUp,
 		"down": tea.KeyDown, "left": tea.KeyLeft, "right": tea.KeyRight, "f1": tea.KeyF1, "f2": tea.KeyF2,
-		"pgup": tea.KeyPgUp, "space": tea.KeySpace}
+		"pgup": tea.KeyPgUp, "space": tea.KeySpace, "delete": tea.KeyDelete}
 	var mod tea.KeyMod
 	for {
 		switch {
@@ -64,7 +64,7 @@ func legacyModel(t *testing.T, keymap string) *model {
 // Every action of ANALYSIS.md §5 with keys a legacy terminal (no kitty keyboard protocol)
 // delivers: no ctrl+digit, ctrl+shift, shift+enter, ctrl+i or ctrl+, anywhere here.
 func TestLegacyKeys(t *testing.T) {
-	for _, keymap := range []string{"vim+telegram", "telegram"} {
+	for _, keymap := range []string{"default", "telegram"} {
 		vim := keymap != "telegram"
 		check := func(what string, ok bool) {
 			t.Helper()
@@ -125,7 +125,7 @@ func TestLegacyKeys(t *testing.T) {
 		}
 		check("next folder", m.tab == 1)
 		if vim {
-			press(m, "g", "a")
+			press(m, "@", "a", "r", "c", "h", "enter")
 		} else {
 			press(m, "right")
 		}
@@ -141,9 +141,17 @@ func TestLegacyKeys(t *testing.T) {
 		press(m, "ctrl+n")
 		check("new chat", m.pick != nil && m.pick.kind == pickNew)
 		press(m, "esc")
-		if vim {
-			press(m, "g", "s")
+		if vim { // the keys shared with ticktick-tui
+			press(m, "n")
+			check("new chat (n)", m.pick != nil && m.pick.kind == pickNew)
+			press(m, "esc", "?")
+			check("help (?)", m.help)
+			press(m, "esc", "G", "g")
+			check("top (g)", m.sel == 0)
+			press(m, "@", "s", "a", "v", "enter")
 			check("saved messages", m.open == 42)
+			press(m, "esc", "esc")
+			check("quit (q in the list)", m.focus == focusList && press(m, "q") != nil)
 		}
 		check("mark read", press(m, "ctrl+r") != nil)
 		check("quit", press(m, "ctrl+q") != nil)
@@ -180,7 +188,7 @@ func TestSettingsApplyAndSave(t *testing.T) {
 
 // The Italian layout uses the keys in the US punctuation's places; typing keeps them.
 func TestItalianLayout(t *testing.T) {
-	m := legacyModel(t, "vim+telegram")
+	m := legacyModel(t, "default")
 	m.o.Config.Keys.Layout = "it"
 	m.comp = newInput("")
 	press(m, "+", "-")
@@ -206,7 +214,7 @@ func TestItalianLayout(t *testing.T) {
 
 // : finds chats; after > it finds settings and commands, and picking one goes there.
 func TestPalette(t *testing.T) {
-	m := legacyModel(t, "vim+telegram")
+	m := legacyModel(t, "default")
 	m.insert, m.focus = false, focusList
 	press(m, ":")
 	if m.pick == nil || m.pick.kind != pickPalette {
@@ -241,7 +249,7 @@ func TestPalette(t *testing.T) {
 
 // As in Telegram, esc pressed enough times leaves the chat list with no chat open.
 func TestEscClosesChat(t *testing.T) {
-	for keymap, n := range map[string]int{"vim+telegram": 3, "telegram": 2} {
+	for keymap, n := range map[string]int{"default": 3, "telegram": 2} {
 		m := legacyModel(t, keymap)
 		press(m, slices.Repeat([]string{"esc"}, n-1)...)
 		if m.open == 0 || m.focus != focusList {
@@ -251,5 +259,25 @@ func TestEscClosesChat(t *testing.T) {
 		if m.open != 0 || m.prevOpen == 0 {
 			t.Fatalf("%s: esc ×%d should close the chat", keymap, n)
 		}
+	}
+}
+
+// In a chat's messages (default keymap): / searches the chat, D and delete delete.
+func TestChatLetterKeys(t *testing.T) {
+	m := legacyModel(t, "default")
+	press(m, "esc") // insert → the messages
+	press(m, "/")
+	if m.pick == nil || m.pick.kind != pickInChat {
+		t.Fatal("/ in a chat should search the chat")
+	}
+	press(m, "esc", "k")
+	for _, k := range []string{"D", "delete"} {
+		if press(m, k) == nil {
+			t.Fatalf("%s should ask to delete the selected message", k)
+		}
+	}
+	press(m, "ctrl+k")
+	if m.pick == nil || m.pick.kind != pickInChat {
+		t.Fatal("ctrl+k in a chat should search the chat")
 	}
 }

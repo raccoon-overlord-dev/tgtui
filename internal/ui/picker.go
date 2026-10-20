@@ -14,12 +14,13 @@ type pickKind int
 
 const (
 	pickForward  pickKind = iota // the chat to forward to
-	pickChats                    // chats and contacts, by name (/)
-	pickContacts                 // contacts (g c)
-	pickMessages                 // messages in all chats (?, ctrl+f in the list)
+	pickChats                    // chats and contacts by name, then messages in all chats (/)
+	pickContacts                 // contacts (:contacts)
+	pickMessages                 // messages in all chats (ctrl+f in the list)
 	pickInChat                   // messages in the open chat (ctrl+f in a chat)
 	pickPalette                  // the : palette: chats as pickChats, settings and commands after >
 	pickNew                      // a new chat: contacts, or someone by @username or +phone
+	pickJump                     // a folder, the archive or Saved Messages (@)
 )
 
 // chats: the kind searches chats and contacts by name; contacts: it lists contacts.
@@ -33,6 +34,7 @@ type item struct {
 	who, text       string // a message result's second line: "Sender: " and the text
 	section         string // Chats, Contacts, Recent: a label above the first item of each
 	chat, user, msg int64  // chat 0 with user: a contact without a chat yet
+	tab             int    // pickJump: the folder tab, its index + 1
 }
 
 // picker is a filtered list: type to search, enter to pick. Searches run in core and come
@@ -99,6 +101,22 @@ func (m *model) search() tea.Cmd {
 		p.query, p.items = q, m.settingItems(strings.TrimSpace(rest))
 		return nil
 	}
+	if p.kind == pickJump { // the folder tabs, then Saved Messages
+		p.query, p.items = q, nil
+		for i, t := range m.tabs() {
+			name := t.Name
+			if t.ID == core.Main {
+				name = "All chats"
+			}
+			if strings.Contains(strings.ToLower(name), strings.ToLower(q)) {
+				p.items = append(p.items, item{title: name, right: map[bool]string{true: "archive", false: "folder"}[t.ID == core.Archive], tab: i + 1})
+			}
+		}
+		if me := m.snap.Me; me != nil && strings.Contains("saved messages", strings.ToLower(q)) {
+			p.items = append(p.items, item{title: "Saved Messages", chat: me.ID})
+		}
+		return nil
+	}
 	if p.kind == pickForward || p.kind.chats() && q == "" { // filter the chat list, no request
 		p.query, p.items = q, nil
 		section := ""
@@ -119,8 +137,14 @@ func (m *model) search() tea.Cmd {
 	p.busy = true
 	open := m.open
 	return func() tea.Msg {
-		var items []item
+		var items, found []item
 		var err error
+		done := make(chan struct{})
+		if p.kind == pickChats { // messages too, from the server: alongside the chats
+			go func() { found, _ = m.messageItems(q, 0, true, "Messages"); close(done) }()
+		} else {
+			close(done)
+		}
 		switch {
 		case p.kind.chats() || p.kind.contacts():
 			var fs []core.Found
@@ -143,22 +167,10 @@ func (m *model) search() tea.Cmd {
 			if p.kind == pickInChat {
 				chat = open
 			}
-			var ms []core.Message
-			ms, err = m.c.SearchMessages(q, chat)
-			for _, msg := range ms {
-				it := item{title: senderName(msg), right: m.shortTime(msg.Date), text: oneLine(label(msg)), chat: msg.ChatID, msg: msg.ID}
-				if ch := m.c.Chat(msg.ChatID); ch != nil && p.kind == pickMessages {
-					it.title = m.chatName(ch)
-					switch {
-					case msg.Outgoing && ch.Kind != core.ChatChannel:
-						it.who = "You: "
-					case ch.Kind == core.ChatGroup:
-						it.who = senderName(msg) + ": "
-					}
-				}
-				items = append(items, it)
-			}
+			items, err = m.messageItems(q, chat, p.kind == pickMessages, "")
 		}
+		<-done
+		items = append(items, found...)
 		if p.kind == pickNew && (strings.HasPrefix(q, "@") && len(q) > 1 || strings.HasPrefix(q, "+")) {
 			if f, err := m.c.Lookup(q); err == nil && (f.ChatID != 0 || f.UserID != 0) {
 				it := m.foundItem(f)
@@ -177,6 +189,27 @@ func (m *model) search() tea.Cmd {
 		}
 		return resultsMsg{p, q, items, err}
 	}
+}
+
+// messageItems are the messages matching q (chat 0: in all chats) as picker rows; inAll
+// titles each with its chat.
+func (m *model) messageItems(q string, chat int64, inAll bool, section string) ([]item, error) {
+	ms, err := m.c.SearchMessages(q, chat)
+	var items []item
+	for _, msg := range ms {
+		it := item{title: senderName(msg), right: m.shortTime(msg.Date), text: oneLine(label(msg)), section: section, chat: msg.ChatID, msg: msg.ID}
+		if ch := m.c.Chat(msg.ChatID); ch != nil && inAll {
+			it.title = m.chatName(ch)
+			switch {
+			case msg.Outgoing && ch.Kind != core.ChatChannel:
+				it.who = "You: "
+			case ch.Kind == core.ChatGroup:
+				it.who = senderName(msg) + ": "
+			}
+		}
+		items = append(items, it)
+	}
+	return items, err
 }
 
 func (m *model) pickerKey(k tea.KeyPressMsg) tea.Cmd {
@@ -219,6 +252,8 @@ func (m *model) picked(p *picker, it item) tea.Cmd {
 			}
 			return flashMsg("✓ Forwarded to " + it.title)
 		}
+	case it.tab != 0:
+		return m.setTab(it.tab - 1)
 	case it.msg != 0:
 		m.jumpTo = it.msg
 		return m.enterChat(it.chat, func() { m.c.OpenChatAt(it.chat, it.msg) })
@@ -242,13 +277,13 @@ func hl(s, q string, base, bold lipgloss.Style) string {
 // results (scrolled to the selection).
 func (m *model) pickerBox(h int) []string {
 	p := m.pick
-	w := map[pickKind]int{pickForward: 50, pickContacts: 50, pickNew: 50, pickChats: 60, pickPalette: 60, pickMessages: 84, pickInChat: 84}[p.kind]
+	w := map[pickKind]int{pickForward: 50, pickContacts: 50, pickNew: 50, pickJump: 50, pickChats: 72, pickPalette: 60, pickMessages: 84, pickInChat: 84}[p.kind]
 	w = min(w, m.w-4)
 	iw := w - 4
 	q := strings.TrimSpace(p.in.value())
 	settings := p.kind.chats() && strings.HasPrefix(q, ">")
 	hq := strings.TrimSpace(strings.TrimPrefix(q, ">")) // what results highlight
-	hint := map[pickKind]string{pickForward: "type to filter", pickContacts: "type to filter", pickChats: "type a name or @username",
+	hint := map[pickKind]string{pickForward: "type to filter", pickContacts: "type to filter", pickJump: "type to filter", pickChats: "a name, @username or words in messages",
 		pickPalette: "a chat, or > for settings", pickNew: "a contact, @username or +phone"}[p.kind]
 	if hint == "" {
 		hint = "type to search"
@@ -284,15 +319,12 @@ func (m *model) pickerBox(h int) []string {
 	}
 	if len(p.items) == 0 && !p.busy && q != "" && p.query == q {
 		rows = append(rows, "", center(title.Render(`Nothing found for "`+q+`"`), iw+2))
-		if p.kind.chats() && !settings {
-			rows = append(rows, center(dim.Render(m.k("?")+" searches inside messages instead"), iw+2))
-		}
 	}
 	room := max(h-2-len(inner), 1)
 	top := max(selTo-room, 0)
 	inner = append(inner, rows[top:min(top+room, len(rows))]...)
 
-	head := map[pickKind]string{pickForward: "Forward to…", pickContacts: "Contacts", pickChats: "Find chats and contacts",
+	head := map[pickKind]string{pickForward: "Forward to…", pickContacts: "Contacts", pickJump: "Go to", pickChats: "Search chats, contacts and messages",
 		pickPalette: "Find chats and contacts", pickNew: "New chat"}[p.kind]
 	if settings {
 		head = "Settings and commands"
@@ -317,7 +349,7 @@ func (m *model) pickerBox(h int) []string {
 	case q != "" && p.query == q || settings:
 		right = dim.Render(map[bool]string{true: "1 result", false: fmt.Sprint(len(p.items), " results")}[len(p.items) == 1])
 	}
-	bottom := map[pickKind]string{pickForward: "enter send · esc close", pickContacts: "enter open chat · esc close",
+	bottom := map[pickKind]string{pickForward: "enter send · esc close", pickContacts: "enter open chat · esc close", pickJump: "enter go · esc close",
 		pickNew: "enter open chat · esc close", pickChats: "↑ ↓ move · enter open · esc close", pickPalette: "↑ ↓ move · enter open · esc close", pickMessages: "↑ ↓ move · enter jump to message · esc close",
 		pickInChat: "enter jump · esc close"}[p.kind]
 	if len(p.items) == 0 {
