@@ -369,7 +369,10 @@ func (m *model) enterChat(id int64, load func()) tea.Cmd {
 		return nil
 	}
 	if id != m.open {
-		m.prevOpen, m.open = m.open, id
+		if m.open != 0 {
+			m.prevOpen = m.open
+		}
+		m.open = id
 		m.anchor, m.off, m.viewedMax, m.cur, m.replyTo, m.editID = 0, 0, 0, 0, 0, 0
 		m.cache = map[lineKey]rendered{}
 		m.win = core.Window{ChatID: id, Loading: true}
@@ -381,6 +384,21 @@ func (m *model) enterChat(id int64, load func()) tea.Cmd {
 	m.focus = focusChat
 	m.insert = m.canWrite() && m.jumpTo == 0 && (m.o.Config.Keys.OpenIn != "normal" || !m.vim())
 	return func() tea.Msg { load(); return nil }
+}
+
+// closeChat leaves the open chat: the pane shows "No chat open" and its messages are no
+// longer marked read.
+func (m *model) closeChat() tea.Cmd {
+	if m.open == 0 {
+		return nil
+	}
+	m.prevOpen, m.open = m.open, 0
+	m.win, m.cache, m.focus = core.Window{}, map[lineKey]rendered{}, focusList
+	m.cur, m.replyTo, m.editID, m.attach, m.pathIn, m.mention = 0, 0, 0, nil, nil, nil
+	if m.images == termimg.Kitty {
+		m.sendQ = append(m.sendQ, termimg.DeleteAll())
+	}
+	return func() tea.Msg { m.c.CloseChat(); return nil }
 }
 
 func (m *model) openChatOf(ch *core.Chat) tea.Cmd {

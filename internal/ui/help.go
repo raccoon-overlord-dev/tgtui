@@ -6,7 +6,7 @@ var help = []struct {
 	name string
 	keys [][2]string
 }{
-	{"CHATS", [][2]string{{"j k  ↑ ↓", "move in the list"}, {"J K  alt+↑ ↓", "previous / next chat"}, {"enter", "open chat"},
+	{"CHATS", [][2]string{{"j k  ↑ ↓", "move in the list"}, {"J K  alt+↑ ↓", "previous / next chat"}, {"enter", "open chat"}, {"esc", "close it (in the list)"},
 		{"b", "back to the previous chat"}, {"m  ctrl+\\", "chat menu"}, {"R  ctrl+r", "mark as read"}}},
 	{"FOLDERS", [][2]string{{"1–9  ctrl+1–8", "go to folder"}, {"[ ]  ctrl+⇧+↑ ↓", "previous / next folder"}, {"g a  ctrl+9", "archive"},
 		{"g s  ctrl+0", "Saved Messages"}, {"g c", "contacts"}}},

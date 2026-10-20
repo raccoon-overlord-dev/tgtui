@@ -220,6 +220,7 @@ func (m *model) msgLines(i, w int, ch *core.Chat) rendered {
 	if reply != "" {
 		body = append(body, reply)
 	}
+	afterImg := 0 // the first body line after the image: the time never joins an image row
 	if img != "" {
 		maxRows := 10
 		if msg.Kind == "Sticker" {
@@ -227,6 +228,7 @@ func (m *model) msgLines(i, w int, ch *core.Chat) rendered {
 		}
 		cols, rows := termimg.Size(msg.Media.W, msg.Media.H, min(bw, 60), maxRows)
 		body = append(body, m.drawImage(path, data, cols, rows)...)
+		afterImg = len(body)
 	}
 	if file != "" {
 		body = append(body, ansi.Truncate(file, bw, "…"))
@@ -258,7 +260,7 @@ func (m *model) msgLines(i, w int, ch *core.Chat) rendered {
 		if msg.EditDate != 0 {
 			meta = dim.Render("edited ") + meta
 		}
-		if n := len(body); n > 0 && ansi.StringWidth(body[n-1])+2+ansi.StringWidth(meta) <= cw {
+		if n := len(body); n > afterImg && ansi.StringWidth(body[n-1])+2+ansi.StringWidth(meta) <= cw {
 			body[n-1] += "  " + meta
 		} else {
 			body = append(body, meta)

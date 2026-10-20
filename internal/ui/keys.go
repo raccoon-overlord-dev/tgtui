@@ -233,6 +233,8 @@ func (m *model) listKey(key string) tea.Cmd {
 		if m.open != 0 {
 			m.focus = focusChat
 		}
+	case "esc": // as in Telegram: esc in the list closes the open chat
+		return m.closeChat()
 	}
 	return nil
 }
@@ -247,6 +249,7 @@ func (m *model) plainListKey(k tea.KeyPressMsg) tea.Cmd {
 		return m.setTab(m.tab + 1)
 	case "j", "k", "l", "G", "ctrl+d", "ctrl+u":
 	case "esc":
+		return m.listKey(key)
 	default:
 		if k.Text != "" && !strings.Contains(key, "+") && key != "space" {
 			kind := pickChats

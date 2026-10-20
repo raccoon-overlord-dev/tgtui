@@ -338,6 +338,18 @@ func (c *Core) switchTo(id int64) {
 	c.send(map[string]any{"@type": "openChat", "chat_id": id})
 }
 
+// CloseChat leaves the open chat, if any.
+func (c *Core) CloseChat() {
+	c.mu.Lock()
+	prev := c.win.ChatID
+	c.win, c.viewed = Window{}, 0
+	c.mu.Unlock()
+	c.notify()
+	if prev != 0 {
+		c.send(map[string]any{"@type": "closeChat", "chat_id": prev})
+	}
+}
+
 // OpenSaved opens Saved Messages, the chat with oneself.
 func (c *Core) OpenSaved() {
 	me := c.Snapshot().Me

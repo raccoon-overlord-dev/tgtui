@@ -3,6 +3,7 @@ package ui
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -234,5 +235,20 @@ func TestPalette(t *testing.T) {
 	}
 	if c, ok := commandNamed("quit"); !ok || c.cmd != "q" {
 		t.Fatal("quit: no command")
+	}
+}
+
+// As in Telegram, esc pressed enough times leaves the chat list with no chat open.
+func TestEscClosesChat(t *testing.T) {
+	for keymap, n := range map[string]int{"vim+telegram": 3, "telegram": 2} {
+		m := legacyModel(t, keymap)
+		press(m, slices.Repeat([]string{"esc"}, n-1)...)
+		if m.open == 0 || m.focus != focusList {
+			t.Fatalf("%s: esc ×%d should only leave the chat (open %d)", keymap, n-1, m.open)
+		}
+		press(m, "esc")
+		if m.open != 0 || m.prevOpen == 0 {
+			t.Fatalf("%s: esc ×%d should close the chat", keymap, n)
+		}
 	}
 }
