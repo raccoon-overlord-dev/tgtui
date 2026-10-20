@@ -1,11 +1,13 @@
-# A tag v* builds the static Linux binaries in Docker (TDLib compiles there, cached per
-# architecture) and publishes them with checksums as a GitHub release.
+# A tag v* builds the static Linux binaries in Docker and the macOS ones natively (TDLib
+# compiles once per architecture and is cached) and publishes them with checksums as a
+# GitHub release. Run by hand, it only builds: the binaries stay in the run's artifacts.
 # Needs the repository secrets TGTUI_API_ID and TGTUI_API_HASH, embedded in the binaries.
 name: Release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -49,13 +51,52 @@ jobs:
           name: tgtui_linux_${{ matrix.arch }}
           path: tgtui_linux_${{ matrix.arch }}.tar.gz
 
+  darwin:
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: amd64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: brew install cmake gperf openssl@3 pkgconf
+      - id: tdlib
+        run: echo "commit=$(sed -n 's/^ARG TDLIB_COMMIT=//p' Dockerfile)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/tgtui-build
+          key: tdlib-darwin-${{ matrix.arch }}-${{ steps.tdlib.outputs.commit }}
+      - name: Build
+        env:
+          API_ID: ${{ secrets.TGTUI_API_ID }}
+          API_HASH: ${{ secrets.TGTUI_API_HASH }}
+        run: make build VERSION=${{ github.ref_name }} # BUILD_JOBS 3: the arm64 runner has 7 GB
+      - name: Check and pack
+        run: |
+          otool -L tgtui
+          if otool -L tgtui | tail -n +2 | grep -v -e /usr/lib/ -e /System/; then exit 1; fi # only system libraries
+          ./tgtui --version
+          tar -czf tgtui_darwin_${{ matrix.arch }}.tar.gz tgtui
+      - uses: actions/upload-artifact@v5
+        with:
+          name: tgtui_darwin_${{ matrix.arch }}
+          path: tgtui_darwin_${{ matrix.arch }}.tar.gz
+
   release:
-    needs: linux
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linux, darwin]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v5
         with:
-          pattern: tgtui_linux_*
+          pattern: tgtui_*
           path: dist
           merge-multiple: true
       - name: Publish
