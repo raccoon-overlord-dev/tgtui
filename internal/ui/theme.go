@@ -126,6 +126,12 @@ func setTheme(name string, x256, paint bool) {
 	if _, err := toml.Decode(string(b), &f.t); err != nil {
 		panic("ui: bad theme " + name + ": " + err.Error())
 	}
+	iconBg, iconAccent = "#1c1612", "#e8833a"
+	if bg, ok := f.get("base.background")["hex"].(string); ok {
+		if ac, ok := f.get("focus.accent")["hex"].(string); ok {
+			iconBg, iconAccent = bg, ac
+		}
+	}
 	text, title, dim = f.style("base.text", ""), f.style("base.title", ""), f.style("base.secondary", "")
 	borderSt, focusBorder, accent = f.style("base.border", ""), f.style("focus.focused_border", ""), f.style("focus.accent", "")
 	selFill = f.style("focus.selection_fg", "focus.selection_bg")

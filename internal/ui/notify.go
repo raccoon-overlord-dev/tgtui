@@ -56,6 +56,7 @@ func oscNotify(title, body string) string {
 }
 
 func systemNotify(title, body string) tea.Cmd {
+	icon := iconPath() // here: setTheme changes the colours on the UI goroutine
 	return func() tea.Msg {
 		var err error
 		switch runtime.GOOS {
@@ -63,7 +64,11 @@ func systemNotify(title, body string) tea.Cmd {
 			err = exec.Command("osascript", "-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)",
 				"-e", "end run", title, body).Run()
 		default:
-			err = exec.Command("notify-send", "-a", "tgtui", title, body).Run()
+			args := []string{"-a", "tgtui", title, body}
+			if icon != "" {
+				args = append([]string{"-i", icon}, args...)
+			}
+			err = exec.Command("notify-send", args...).Run()
 		}
 		if err != nil {
 			return flashMsg("Notification failed: " + err.Error())

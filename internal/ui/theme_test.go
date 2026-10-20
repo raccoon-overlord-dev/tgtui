@@ -49,3 +49,16 @@ func TestComposerWrap(t *testing.T) {
 		t.Fatalf("%q row %d", got, row)
 	}
 }
+
+// The notification icon takes each painted theme's background and accent.
+func TestIconColours(t *testing.T) {
+	defer setTheme("terminal", false, false)
+	setTheme("harvest-light", false, true)
+	if iconBg != "#f6eedf" || iconAccent != "#ab510f" {
+		t.Fatalf("harvest-light icon: %s %s", iconBg, iconAccent)
+	}
+	setTheme("terminal", false, false) // ANSI only: harvest's colours
+	if iconBg != "#1c1612" || iconAccent != "#e8833a" {
+		t.Fatalf("terminal icon: %s %s", iconBg, iconAccent)
+	}
+}
